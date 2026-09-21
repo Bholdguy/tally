@@ -1,0 +1,50 @@
+{
+  "name": "tally",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "workspaces": [
+    "contract",
+    "db",
+    "reliability",
+    "agent",
+    "server",
+    "demo",
+    "stt"
+  ],
+  "scripts": {
+    "test": "npm run check:boundaries && vitest run",
+    "check:boundaries": "tsx scripts/check-boundaries.ts",
+    "scan:secrets": "tsx --env-file-if-exists=.env scripts/scan-secrets.ts",
+    "typecheck": "tsc -b --noEmit false || tsc -p tsconfig.json --noEmit",
+    "db:reset": "tsx db/src/reset.ts",
+    "spike:g5": "tsx --env-file-if-exists=.env agent/src/spike/run-spike.ts",
+    "spike:tts": "powershell -NoProfile -File scripts/make-spike-audio.ps1",
+    "live:dropout": "tsx --env-file-if-exists=.env scripts/live-dropout.ts",
+    "measure:vad": "tsx scripts/measure-local-vad.ts fixtures/aai-events-A-hold --md",
+    "start:render": "sh scripts/render-start.sh",
+    "serve": "npm run build:dashboard && tsx --env-file-if-exists=.env server/src/main.ts",
+    "adversarial": "tsx scripts/adversarial.ts",
+    "build:dashboard": "tsx scripts/build-dashboard.ts",
+    "demo": "tsx scripts/demo.ts",
+    "demo:seed": "tsx scripts/demo-seed.ts",
+    "smoke:deployed": "tsx --env-file-if-exists=.env scripts/smoke-deployed.ts",
+    "replay:case": "tsx --env-file-if-exists=.env scripts/replay-case.ts",
+    "real-speech:run": "tsx --env-file-if-exists=.env scripts/real-speech-run.ts",
+    "real-speech:batch": "tsx scripts/real-speech-batch.ts",
+    "real-speech:summary": "tsx scripts/real-speech-summary.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

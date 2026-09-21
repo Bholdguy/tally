@@ -1,0 +1,354 @@
+{
+  "started": "2026-09-20T22:49:05.833Z",
+  "note": "synthetic customer, induced holds, real agent; see scripts/live-repair-session.ts",
+  "sessions": {
+    "s1": [
+      {
+        "t_ms": 5691,
+        "kind": "transcript_agent",
+        "text": "Hi, welcome! What can I get for you?"
+      },
+      {
+        "t_ms": 8053,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 8291,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 11006,
+        "kind": "case"
+      },
+      {
+        "t_ms": 11007,
+        "kind": "repair",
+        "outcome": "asked",
+        "ask": "Just to confirm, that's 3 classic burgers?"
+      },
+      {
+        "t_ms": 11007,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "HOLD",
+        "code": "QTY_MISMATCH"
+      },
+      {
+        "t_ms": 15872,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 3 classic burgers?"
+      },
+      {
+        "t_ms": 17301,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 17918,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 19876,
+        "kind": "repair",
+        "outcome": "resolved"
+      },
+      {
+        "t_ms": 19877,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "ALLOW"
+      }
+    ],
+    "s2": [
+      {
+        "t_ms": 6014,
+        "kind": "transcript_agent",
+        "text": "Hi, welcome! What can I get for you?"
+      },
+      {
+        "t_ms": 8126,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 8512,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 10935,
+        "kind": "case"
+      },
+      {
+        "t_ms": 10935,
+        "kind": "repair",
+        "outcome": "asked",
+        "ask": "Just to confirm, that's 3 classic burgers?"
+      },
+      {
+        "t_ms": 10936,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "HOLD",
+        "code": "QTY_MISMATCH"
+      },
+      {
+        "t_ms": 14429,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 14874,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 3 classic"
+      },
+      {
+        "t_ms": 14877,
+        "kind": "barge_in"
+      },
+      {
+        "t_ms": 15057,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 18075,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 18553,
+        "kind": "transcript_agent",
+        "text": "No, I'm sorry, I didn't add those."
+      },
+      {
+        "t_ms": 18557,
+        "kind": "barge_in"
+      },
+      {
+        "t_ms": 18949,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 20685,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 3 classic burgers?"
+      },
+      {
+        "t_ms": 21249,
+        "kind": "repair",
+        "outcome": "resolved"
+      },
+      {
+        "t_ms": 21249,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "ALLOW"
+      }
+    ],
+    "s3": [
+      {
+        "t_ms": 6922,
+        "kind": "transcript_agent",
+        "text": "Hi, welcome! What can I get for you?"
+      },
+      {
+        "t_ms": 9018,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 9415,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 11973,
+        "kind": "case"
+      },
+      {
+        "t_ms": 11974,
+        "kind": "repair",
+        "outcome": "asked",
+        "ask": "Just to confirm, that's 7 classic burgers?"
+      },
+      {
+        "t_ms": 11974,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "HOLD",
+        "code": "QTY_MISMATCH"
+      },
+      {
+        "t_ms": 13731,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 14042,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 7 classic burgers?"
+      },
+      {
+        "t_ms": 14349,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 18830,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 7 classic burgers?"
+      },
+      {
+        "t_ms": 27916,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 28701,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 30574,
+        "kind": "case"
+      },
+      {
+        "t_ms": 30574,
+        "kind": "repair",
+        "outcome": "asked",
+        "ask": "Just to confirm, that's 7 classic burgers?"
+      },
+      {
+        "t_ms": 30574,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "HOLD",
+        "code": "QTY_MISMATCH"
+      },
+      {
+        "t_ms": 32077,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 32315,
+        "kind": "transcript_agent",
+        "text": "Just"
+      },
+      {
+        "t_ms": 32800,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 38394,
+        "kind": "transcript_agent",
+        "text": "Just to confirm, that's 7 classic burgers?"
+      },
+      {
+        "t_ms": 46243,
+        "kind": "evidence_transcript",
+        "text": "2"
+      },
+      {
+        "t_ms": 47182,
+        "kind": "evidence_transcript",
+        "text": "2 burgers."
+      },
+      {
+        "t_ms": 48103,
+        "kind": "case"
+      },
+      {
+        "t_ms": 48103,
+        "kind": "repair",
+        "outcome": "escalated",
+        "ask": "I'm not able to confirm the classic burger myself, so a team member will confirm that one with you at pickup. Let's carry on with the rest of your order."
+      },
+      {
+        "t_ms": 48103,
+        "kind": "verdict",
+        "tool": "add_item",
+        "verdict": "HOLD",
+        "code": "QTY_MISMATCH"
+      },
+      {
+        "t_ms": 60850,
+        "kind": "transcript_agent",
+        "text": "I'm not able to confirm the classic burger myself, so a team member will confirm that one with you at pickup. Let's carry on with the rest of your order. What else can I get for you?"
+      },
+      {
+        "t_ms": 60855,
+        "kind": "case"
+      },
+      {
+        "t_ms": 60855,
+        "kind": "repair",
+        "outcome": "asked",
+        "ask": "Let me correct that. I don't have any classic burgers on your order."
+      },
+      {
+        "t_ms": 66776,
+        "kind": "transcript_agent",
+        "text": "Let me correct that. I don't have any classic burgers on your order."
+      }
+    ]
+  },
+  "results": [
+    {
+      "session": "S1",
+      "check": "A the real agent speaks a question about the disputed item after the HELD result",
+      "result": "PASS: \"Just to confirm, that's 3 classic burgers?\""
+    },
+    {
+      "session": "S1",
+      "check": "A2 fidelity to the instruction it was given",
+      "result": "PASS: verbatim (\"Just to confirm, that's 3 classic burgers?\")"
+    },
+    {
+      "session": "S1",
+      "check": "B the answer leads to a re-issued, re-validated call",
+      "result": "PASS after 1 answer(s): re-issued call verdict ALLOW (repaired)"
+    },
+    {
+      "session": "S1",
+      "check": "B the repair resolved only through the re-validated commit",
+      "result": "PASS: order [{\"item_id\":\"burger\",\"quantity\":2,\"modifiers\":[]}]"
+    },
+    {
+      "session": "S2",
+      "check": "D a customer speaking over the repair question is derived as a barge-in",
+      "result": "PASS: derived from 2 source events, reaction 1 ms"
+    },
+    {
+      "session": "S2",
+      "check": "D the repair still completes after the interruption",
+      "result": "PASS after 1 answer(s): next verdict ALLOW, repair resolved"
+    },
+    {
+      "session": "S3",
+      "check": "C after two failed asks Tally escalates (data)",
+      "result": "PASS: 2 asks, then a hand-off instruction"
+    },
+    {
+      "session": "S3",
+      "check": "C the real agent speaks the hand-off wording (team member / at pickup), not another question",
+      "result": "PASS: \"I'm not able to confirm the classic burger myself, so a team member will confirm that one with you at pickup. Let's carry on with the rest of your order. What else can I get for you?\""
+    },
+    {
+      "session": "S3",
+      "check": "C the agent does not keep re-calling for that item after the hand-off",
+      "result": "PASS: no further add_item in 8 s"
+    },
+    {
+      "session": "S3",
+      "check": "C the disputed item was never committed",
+      "result": "PASS: order empty"
+    }
+  ]
+}

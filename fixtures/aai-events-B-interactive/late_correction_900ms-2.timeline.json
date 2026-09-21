@@ -1,0 +1,464 @@
+{
+ "session_id": "sess_5c0be47b8cce4d3397c50e8e5071b2c4",
+ "started_at_unix_ms": 1789859976030,
+ "turns": [
+  {
+   "turn_id": "resp_4385cae15e744134a7192790743c8f4a",
+   "item_id": "msg_49ad282adea6430dad94947046615967",
+   "status": "completed",
+   "trigger": "greeting",
+   "requested_instructions": null,
+   "user_transcript": null,
+   "user_speech_started_at_ms": null,
+   "user_speech_ended_at_ms": null,
+   "user_confidence": null,
+   "agent_text": "Hi, welcome! What can I get for you?",
+   "agent_reply_started_at_ms": 1789859976407,
+   "agent_reply_ended_at_ms": 1789859979540,
+   "interrupted_at_ms": null,
+   "time_to_first_audio_ms": 351
+  },
+  {
+   "turn_id": "resp_1176fac4031147c5b0604ae57e911b4a",
+   "item_id": "msg_5071d69ce22549eb8332cd706e111b87",
+   "status": "completed",
+   "trigger": "user_speech",
+   "requested_instructions": null,
+   "user_transcript": "2 burgers.",
+   "user_speech_started_at_ms": 1789859982150,
+   "user_speech_ended_at_ms": 1789859983450,
+   "user_confidence": 1,
+   "agent_text": null,
+   "agent_reply_started_at_ms": null,
+   "agent_reply_ended_at_ms": null,
+   "interrupted_at_ms": null,
+   "time_to_first_audio_ms": null,
+   "tool_calls": [
+    {
+     "call_id": "chatcmpl-tool-9e78f1397ff289cd",
+     "name": "add_item",
+     "arguments": {
+      "item_id": "burger",
+      "modifiers": [],
+      "quantity": 2
+     },
+     "result": "{\"status\":\"OK\",\"order\":[{\"item_id\":\"burger\",\"quantity\":2,\"modifiers\":[]}],\"total\":\"$17.98\",\"order_status\":\"open\"}",
+     "dispatched_at_ms": 1789859985391,
+     "result_received_at_ms": 1789859988727,
+     "duration_ms": 3336,
+     "is_error": false,
+     "timed_out": false,
+     "parallel_call_id": "item_4b2bd74c53a7"
+    }
+   ]
+  },
+  {
+   "turn_id": "resp_3c21f05dcdb24925997e771a0c12b69a",
+   "item_id": "msg_8bf85c35e2744690a07c949baaec2e9a",
+   "status": "completed",
+   "trigger": "user_speech",
+   "requested_instructions": null,
+   "user_transcript": "No, wait, make it 3.",
+   "user_speech_started_at_ms": 1789859984550,
+   "user_speech_ended_at_ms": 1789859988726,
+   "user_confidence": 1,
+   "agent_text": null,
+   "agent_reply_started_at_ms": null,
+   "agent_reply_ended_at_ms": null,
+   "interrupted_at_ms": null,
+   "time_to_first_audio_ms": null,
+   "tool_calls": [
+    {
+     "call_id": "chatcmpl-tool-85c451bf71bae115",
+     "name": "update_quantity",
+     "arguments": {
+      "item_id": "burger",
+      "quantity": 3
+     },
+     "result": "{\"status\":\"OK\",\"order\":[{\"item_id\":\"burger\",\"quantity\":3,\"modifiers\":[]}],\"total\":\"$26.97\",\"order_status\":\"open\"}",
+     "dispatched_at_ms": 1789859991102,
+     "result_received_at_ms": 1789859993629,
+     "duration_ms": 2527,
+     "is_error": false,
+     "timed_out": false,
+     "parallel_call_id": "item_37536c353698"
+    }
+   ]
+  },
+  {
+   "turn_id": "resp_df6b340f44004779be743df315c65c24",
+   "item_id": "msg_0371251e22ba44a399b3ff3cebe18dfc",
+   "status": "completed",
+   "trigger": "tool_result",
+   "requested_instructions": null,
+   "user_transcript": null,
+   "user_speech_started_at_ms": null,
+   "user_speech_ended_at_ms": null,
+   "user_confidence": null,
+   "agent_text": "Got it, three burgers. Anything else for you?",
+   "agent_reply_started_at_ms": null,
+   "agent_reply_ended_at_ms": 1789859997591,
+   "interrupted_at_ms": null,
+   "time_to_first_audio_ms": null
+  },
+  {
+   "turn_id": "resp_7d9c5f49263941ad9d0be2ba1fff1371",
+   "item_id": "msg_6b7e213a127d4243a31017ba5687c275",
+   "status": "completed",
+   "trigger": "greeting",
+   "requested_instructions": null,
+   "user_transcript": null,
+   "user_speech_started_at_ms": null,
+   "user_speech_ended_at_ms": null,
+   "user_confidence": null,
+   "agent_text": "Got it, three burgers. Anything else for you?",
+   "agent_reply_started_at_ms": null,
+   "agent_reply_ended_at_ms": 1789860001570,
+   "interrupted_at_ms": null,
+   "time_to_first_audio_ms": null
+  }
+ ],
+ "config_changes": [
+  {
+   "received_at_ms": 1789859976052,
+   "during_turn_id": null,
+   "update": {
+    "system_prompt": "You are the voice ordering assistant at a single-location burger counter. Keep replies short and natural (one or two sentences).\n\nMENU (use these exact item ids and option ids in tool calls):\n- burger: Classic Burger ($8.99); options: no_onions, no_pickles, no_tomato, no_lettuce, no_sauce, extra_cheese, extra_pickles, extra_sauce, add_bacon, gluten_free_bun, sub_chicken_for_beef\n- cheeseburger: Cheeseburger ($9.99); options: no_onions, no_pickles, no_tomato, no_lettuce, no_sauce, extra_pickles, extra_sauce, add_bacon, gluten_free_bun, sub_chicken_for_beef\n- veggie_burger: Veggie Burger ($9.49); options: no_onions, no_pickles, no_tomato, no_lettuce, no_sauce, extra_cheese, extra_sauce, gluten_free_bun\n- chicken_sandwich: Chicken Sandwich ($9.99); options: no_pickles, no_lettuce, no_sauce, extra_sauce, extra_pickles, add_bacon, gluten_free_bun, spicy\n- fries: French Fries ($3.49); options: no_salt, extra_crispy, add_cheese\n- onion_rings: Onion Rings ($4.49); options: no_salt, extra_crispy\n- side_salad: Side Salad ($3.99); options: no_onions, no_tomato, dressing_ranch, dressing_vinaigrette\n- coke: Coke ($2.49); options: no_ice, extra_ice, size_large, size_small\n- diet_coke: Diet Coke ($2.49); options: no_ice, extra_ice, size_large, size_small\n- lemonade: Lemonade ($2.99); options: no_ice, extra_ice, size_large, size_small\n- milkshake: Milkshake ($5.49); options: flavor_vanilla, flavor_chocolate, flavor_strawberry, no_whip\n- cookie: Cookie ($1.99); options: warm\n\nRULES\n1. Take the order with the tools. Never state that something was added, changed, removed or confirmed until the tool result says so.\n2. If the customer corrects themselves (\"two burgers, no wait, three\"), use their FINAL stated quantity or choice.\n3. Each item appears once on the order. To change an item already ordered, use update_quantity or apply_modifier, not add_item.\n4. If a tool result has status \"HELD\", do not repeat the tool call. Say only the question given in its instruction, then wait for the customer's answer.\n5. If a tool result has status \"ERROR\", tell the customer briefly and ask how to proceed. Do not retry silently.\n6. Only offer menu items above. Do not invent items, prices or options. Do not discuss anything except the order.\n7. When the customer is done, ask for a pickup time (\"ASAP\" or a clock time), then call confirm_order.\n8. When you read the order back, use get_order_state and report exactly what it returns, including the total.",
+    "greeting": "Hi, welcome! What can I get for you?",
+    "input": {
+     "type": "audio",
+     "format": {
+      "encoding": "audio/pcm",
+      "sample_rate": 24000
+     },
+     "turn_detection": null,
+     "keyterms": [
+      "Classic Burger",
+      "burger",
+      "hamburger",
+      "classic",
+      "Cheeseburger",
+      "cheeseburger",
+      "Veggie Burger",
+      "veggie burger",
+      "garden burger",
+      "Chicken Sandwich",
+      "chicken sandwich",
+      "chicken",
+      "French Fries",
+      "fries",
+      "chips",
+      "Onion Rings",
+      "onion rings",
+      "rings",
+      "Side Salad",
+      "salad",
+      "side salad",
+      "Coke",
+      "coke",
+      "cola",
+      "Diet Coke",
+      "diet coke",
+      "diet",
+      "Lemonade",
+      "lemonade",
+      "Milkshake",
+      "milkshake",
+      "shake",
+      "Cookie",
+      "cookie"
+     ],
+     "transcription_mode": "max_accuracy",
+     "continuous_partials": null,
+     "transcription_prompt": null,
+     "language_codes": null,
+     "voice_focus": null,
+     "voice_focus_threshold": null
+    },
+    "output": {
+     "type": "audio",
+     "voice": "anna",
+     "format": {
+      "encoding": "audio/pcm",
+      "sample_rate": 24000
+     },
+     "volume": null
+    },
+    "tools": [
+     {
+      "type": "function",
+      "name": "add_item",
+      "description": "Add an item to the order. Only call after the customer has clearly stated the item and quantity. If they correct themselves (\"no wait, three\"), use their FINAL stated quantity.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "item_id": {
+         "type": "string",
+         "enum": [
+          "burger",
+          "cheeseburger",
+          "veggie_burger",
+          "chicken_sandwich",
+          "fries",
+          "onion_rings",
+          "side_salad",
+          "coke",
+          "diet_coke",
+          "lemonade",
+          "milkshake",
+          "cookie"
+         ],
+         "description": "Menu item id, e.g. \"burger\", \"fries\", \"coke\"."
+        },
+        "quantity": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 20
+        },
+        "modifiers": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "enum": [
+           "add_bacon",
+           "add_cheese",
+           "dressing_ranch",
+           "dressing_vinaigrette",
+           "extra_cheese",
+           "extra_crispy",
+           "extra_ice",
+           "extra_pickles",
+           "extra_sauce",
+           "flavor_chocolate",
+           "flavor_strawberry",
+           "flavor_vanilla",
+           "gluten_free_bun",
+           "no_ice",
+           "no_lettuce",
+           "no_onions",
+           "no_pickles",
+           "no_salt",
+           "no_sauce",
+           "no_tomato",
+           "no_whip",
+           "size_large",
+           "size_small",
+           "spicy",
+           "sub_chicken_for_beef",
+           "warm"
+          ]
+         },
+         "description": "Modifier ids valid for the item, e.g. \"no_onions\", \"extra_cheese\". Milkshake needs exactly one flavor_*."
+        }
+       },
+       "required": [
+        "item_id",
+        "quantity",
+        "modifiers"
+       ]
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     },
+     {
+      "type": "function",
+      "name": "remove_item",
+      "description": "Remove an item entirely from the order.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "item_id": {
+         "type": "string",
+         "enum": [
+          "burger",
+          "cheeseburger",
+          "veggie_burger",
+          "chicken_sandwich",
+          "fries",
+          "onion_rings",
+          "side_salad",
+          "coke",
+          "diet_coke",
+          "lemonade",
+          "milkshake",
+          "cookie"
+         ],
+         "description": "Menu item id, e.g. \"burger\", \"fries\", \"coke\"."
+        }
+       },
+       "required": [
+        "item_id"
+       ]
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     },
+     {
+      "type": "function",
+      "name": "update_quantity",
+      "description": "Change the quantity of an item already on the order to a new number (1-20).",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "item_id": {
+         "type": "string",
+         "enum": [
+          "burger",
+          "cheeseburger",
+          "veggie_burger",
+          "chicken_sandwich",
+          "fries",
+          "onion_rings",
+          "side_salad",
+          "coke",
+          "diet_coke",
+          "lemonade",
+          "milkshake",
+          "cookie"
+         ],
+         "description": "Menu item id, e.g. \"burger\", \"fries\", \"coke\"."
+        },
+        "quantity": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 20
+        }
+       },
+       "required": [
+        "item_id",
+        "quantity"
+       ]
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     },
+     {
+      "type": "function",
+      "name": "apply_modifier",
+      "description": "Apply one modifier to an item already on the order (e.g. \"no_onions\", \"extra_cheese\").",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "item_id": {
+         "type": "string",
+         "enum": [
+          "burger",
+          "cheeseburger",
+          "veggie_burger",
+          "chicken_sandwich",
+          "fries",
+          "onion_rings",
+          "side_salad",
+          "coke",
+          "diet_coke",
+          "lemonade",
+          "milkshake",
+          "cookie"
+         ],
+         "description": "Menu item id, e.g. \"burger\", \"fries\", \"coke\"."
+        },
+        "modifier": {
+         "type": "string",
+         "enum": [
+          "add_bacon",
+          "add_cheese",
+          "dressing_ranch",
+          "dressing_vinaigrette",
+          "extra_cheese",
+          "extra_crispy",
+          "extra_ice",
+          "extra_pickles",
+          "extra_sauce",
+          "flavor_chocolate",
+          "flavor_strawberry",
+          "flavor_vanilla",
+          "gluten_free_bun",
+          "no_ice",
+          "no_lettuce",
+          "no_onions",
+          "no_pickles",
+          "no_salt",
+          "no_sauce",
+          "no_tomato",
+          "no_whip",
+          "size_large",
+          "size_small",
+          "spicy",
+          "sub_chicken_for_beef",
+          "warm"
+         ]
+        }
+       },
+       "required": [
+        "item_id",
+        "modifier"
+       ]
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     },
+     {
+      "type": "function",
+      "name": "confirm_order",
+      "description": "Finalize the order once the customer says they are done and gives a pickup time (\"ASAP\" or ISO-8601 like 2026-09-19T18:30:00-04:00).",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "pickup_time": {
+         "type": "string",
+         "description": "\"ASAP\" or ISO-8601 datetime with offset."
+        }
+       },
+       "required": [
+        "pickup_time"
+       ]
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     },
+     {
+      "type": "function",
+      "name": "get_order_state",
+      "description": "Read the current order: items, quantities, modifiers and total. Use to read the order back to the customer.",
+      "parameters": {
+       "type": "object",
+       "properties": {},
+       "required": []
+      },
+      "timeout_seconds": 30,
+      "execution_mode": "interactive",
+      "http": null,
+      "response_instructions": null,
+      "deployment_id": null,
+      "session_update": null
+     }
+    ]
+   }
+  }
+ ],
+ "ended": {
+  "reason": "participant_disconnected",
+  "public_reason": "client_end",
+  "duration_seconds": 28.22279833984375
+ }
+}

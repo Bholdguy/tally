@@ -1,0 +1,16 @@
+{
+  "name": "@tally/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "fastify": "^5.12.5",
+    "@tally/agent": "*",
+    "@tally/contract": "*",
+    "@tally/reliability": "*",
+    "@tally/stt": "*",
+    "@tally/db": "*",
+    "ws": "^8.18.0"
+  }
+}

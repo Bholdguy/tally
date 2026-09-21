@@ -1,0 +1,41 @@
+/* Palette: every foreground/background pair below is checked for WCAG AA contrast in dashboard/test/a11y.test.ts.
+   Colour is never the only signal: every status also has a text label (see .badge). */
+:root {
+  --bg: #0f1419; --panel: #171e26; --line: #2a3542; --text: #e8eef5; --muted: #9db0c3;
+  --ok: #7ee29a; --ok-bg: #12351f; --repaired: #ffd76a; --repaired-bg: #3a3010; --bad: #ff9b93; --bad-bg: #431a17; --wait: #c5cfda; --wait-bg: #2b3440;
+  --speech: #7fb8ff; --agent: #c9a7ff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+header { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+h1 { font-size: 18px; margin: 0; } h3 { margin: 0 0 8px; font-size: 15px; } h4 { margin: 8px 0 4px; font-size: 13px; }
+.muted { color: var(--muted); } .small { font-size: 12px; } .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+nav { display: flex; gap: 4px; } .tab, button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+.tab.on { border-color: var(--speech); } button:disabled { opacity: .5; cursor: not-allowed; } button:focus-visible, input:focus-visible { outline: 2px solid var(--speech); outline-offset: 1px; }
+button.link { background: none; border: none; color: var(--speech); text-decoration: underline; padding: 0 4px; }
+input { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+.counters { display: flex; gap: 8px; margin-left: auto; } .cnt { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
+.banner { flex-basis: 100%; background: var(--wait-bg); color: var(--wait); border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+main { padding: 12px 16px; display: grid; gap: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; } .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.badge.ok { color: var(--ok); background: var(--ok-bg); } .badge.repaired { color: var(--repaired); background: var(--repaired-bg); }
+.badge.bad { color: var(--bad); background: var(--bad-bg); } .badge.wait, .badge.muted { color: var(--wait); background: var(--wait-bg); }
+.chip { border-radius: 8px; padding: 10px 14px; font-weight: 600; } .chip.wait { color: var(--wait); background: var(--wait-bg); border: 1px dashed var(--wait); } .chip.bad { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad); }
+.code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; border-bottom: 1px dotted var(--muted); }
+.t { width: 100%; border-collapse: collapse; } .t th, .t td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; } tr.sel td { background: var(--wait-bg); }
+ol, ul { margin: 0; padding-left: 18px; } li.log { list-style: none; margin-left: -18px; } li.log .t { color: var(--muted); font-family: ui-monospace, monospace; }
+li.log.ok { color: var(--ok); } li.log.bad { color: var(--bad); } li.log.repaired { color: var(--repaired); } li.log.wait { color: var(--wait); } li.log.repair, li.log.drift { color: var(--repaired); }
+.line.partial { color: var(--muted); font-style: italic; } .line.low { border-left: 3px solid var(--repaired); padding-left: 6px; }
+.err { background: var(--bad-bg); color: var(--bad); padding: 8px 12px; border-radius: 6px; margin: 8px 16px; } .notice { color: var(--repaired); background: var(--repaired-bg); padding: 8px 12px; border-radius: 6px; }
+.strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .mchip { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; } .mchip i { color: var(--muted); }
+pre { white-space: pre-wrap; background: var(--bg); padding: 8px; border-radius: 6px; margin: 0; }
+svg.timeline { background: var(--bg); border-radius: 6px; } svg .grid { stroke: var(--line); } svg text { fill: var(--muted); font-size: 11px; } svg .axis { font-size: 10px; } svg .lane { fill: var(--text); font-size: 12px; }
+svg .shape rect { stroke: currentColor; stroke-width: 1; } svg .shape text { fill: currentColor; font-weight: 600; }
+svg .speech { color: var(--speech); } svg .speech rect { fill: rgba(127,184,255,.35); } svg .agent { color: var(--agent); } svg .agent rect { fill: rgba(201,167,255,.35); } svg .agent.interrupted rect { stroke-dasharray: 4 2; }
+svg .ok { color: var(--ok); } svg .ok rect { fill: var(--ok-bg); } svg .repaired { color: var(--repaired); } svg .repaired rect { fill: var(--repaired-bg); } svg .bad { color: var(--bad); } svg .bad rect { fill: var(--bad-bg); }
+svg .wait { color: var(--wait); } svg .wait rect { fill: var(--wait-bg); stroke-dasharray: 3 2; } svg .tick line { stroke: var(--speech); stroke-width: 2; } svg .barge path { fill: var(--repaired); stroke: var(--text); }
+@media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }

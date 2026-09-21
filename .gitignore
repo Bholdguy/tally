@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+data/
+dashboard/dist/
+*.sqlite*
+fixtures/audio/*.pcm
+fixtures/audio/*.wav

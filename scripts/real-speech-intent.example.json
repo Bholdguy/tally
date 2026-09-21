@@ -1,0 +1,11 @@
+{
+  "speaker": "dryrun",
+  "scenario": "inline correction then pickup ASAP (SYNTHETIC smoke test, not real speech)",
+  "kind": "inline_correction",
+  "noise": null,
+  "intended": {
+    "items": [{ "item_id": "burger", "quantity": 3, "modifiers": [] }],
+    "pickup": "ASAP"
+  },
+  "notes": "Speaker writes this BEFORE speaking. Never derive it from a transcript."
+}

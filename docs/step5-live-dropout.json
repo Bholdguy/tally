@@ -1,0 +1,54 @@
+{
+  "ran_at": "2026-09-20T12:09:48.809Z",
+  "note": "Real AssemblyAI streaming API, synthetic SAPI speech, single run per scenario.",
+  "results": [
+    {
+      "scenario": "mid",
+      "pass": true,
+      "verdict": "HOLD",
+      "code": "UNVALIDATABLE",
+      "expectCode": "UNVALIDATABLE",
+      "orderUnchanged": true,
+      "stream_status_at_call": "up",
+      "speech_in_flight_at_call": true,
+      "gate_total_ms": 304,
+      "verdict_after_sever_ms": 38,
+      "waited_ms": 300,
+      "detail": "independent evidence stream is down (socket closed (code 1006))",
+      "repair": "Sorry, could you repeat that for the classic burger?",
+      "real_stream_connect_ms": 1687
+    },
+    {
+      "scenario": "before",
+      "pass": true,
+      "verdict": "HOLD",
+      "code": "UNVALIDATABLE",
+      "expectCode": "UNVALIDATABLE",
+      "orderUnchanged": true,
+      "stream_status_at_call": "down",
+      "speech_in_flight_at_call": true,
+      "gate_total_ms": 1,
+      "verdict_after_sever_ms": null,
+      "waited_ms": 1,
+      "detail": "independent evidence stream is down (socket closed (code 1006))",
+      "repair": "Sorry, could you repeat that for the classic burger?",
+      "real_stream_connect_ms": 1199
+    },
+    {
+      "scenario": "control",
+      "pass": true,
+      "verdict": "HOLD",
+      "code": "QTY_MISMATCH",
+      "expectCode": "QTY_MISMATCH",
+      "orderUnchanged": true,
+      "stream_status_at_call": "up",
+      "speech_in_flight_at_call": true,
+      "gate_total_ms": 2407,
+      "verdict_after_sever_ms": null,
+      "waited_ms": 2403,
+      "detail": "claimed quantity 2, the customer said 3",
+      "repair": "Just to confirm, that's 3 classic burgers?",
+      "real_stream_connect_ms": 1200
+    }
+  ]
+}

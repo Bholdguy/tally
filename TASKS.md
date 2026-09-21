@@ -1,0 +1,184 @@
+# Tally — Sequential Task Checklist
+
+Ordered by the 15 build steps (PRD Part C). Acceptance criteria from brief §19 are checked at the step that satisfies them (see PRD Part D). Loop: LISTEN → EXTRACT → VALIDATE → ALLOW/REPAIR → RECORD FAILURE → REPLAY → IMPROVE.
+
+**Gate legend:** 🚧 blocking gate — later steps may not start until it is checked.
+
+## Step 0 — Repo scaffold (precedes Step 1 implementation) ✅
+- [x] npm workspaces: `contract`, `db`, `reliability`, `agent`, `server`, `dashboard`, `demo`
+- [x] strict TS, Vitest, lint, `.gitignore` (`.env`, `data/`), `.env.example`
+- [x] `check:boundaries` and `scan:secrets` scripts stubbed and wired to `npm test`
+
+## Step 1 — Lock the product contract  *(EXTRACT/VALIDATE definitions)*
+- [x] `CONTRACT.md` (entities, 6 tool shapes, conflict taxonomy, verdict logic, repair protocol, modifier vocabulary)
+- [x] zod schemas + JSON Schema export; enums for conflict/verdict
+- [x] Sample payloads valid/invalid for all 6 tools; schema tests green
+- [x] Every conflict code has a fixture and a repair template
+
+## Step 2 — Sandbox/backend of record
+- [x] `schema.sql` incl. all §B.10 tables (+ `removal/substitution/pickup_time`, `menu`)
+- [x] Idempotent seed (12 items); seed-twice test
+- [x] Committer as sole RW handle; immutability + validation triggers
+- [x] Boundary check: no RW import outside committer
+- [x] Total-math tests
+
+## Step 3 — Live session
+- [x] Plane 1 socket client, tools (mutating = `hold`), system prompt, greeting, `max_accuracy`, keyterms  *(protocol-conformance tested against a documented-protocol mock; NOT yet run against the real API)*
+- [x] `RepairAdapter` (instruction → wire); Plane 1 holds no DB handle
+- [x] Mic bridge `WS /ws/mic`; audio recorder  *(done in Step 4; the Origin policy was corrected on 2026-09-21: same-origin is accepted by default)*
+- [x] Spike harness `npm run spike:g5` built and tested (analyzer + 8 scenarios + synthetic audio)
+- [x] Captured real fixtures in `fixtures/aai-events/` (20 valid sessions; run 1 archived as contaminated)
+- [x] Clean order end-to-end on scripted audio  *(scenario A, deterministic demo: $20.47 confirmed; a clean order with a human speaker is part of the pending real-speech/live-mic work)*
+- [x] 🚧 **`docs/spike-g5.md` written with explicit verdict: NO-GO** (2026-09-19). Ordering, correction-during-hold, speech events during hold, interrupted-turn ordering and latency all measured
+- [x] 🚧 **D-19 decided by owner (2026-09-20): A primary, B diagnostic only, C safety net, D rejected.** Buffer window alone shown insufficient (D-16)
+- [x] 🚧 **Spike A (independent STT stream) run: PASS** (`docs/spike-a.md`): 18/18 corrections delivered (agent live stream 7/18), delivered during hold, no latency on the uncorrected path. Recommended `EVIDENCE_WAIT_MAX_MS=4000`
+- [x] Spike B (interactive-mode diagnostic) run: evidence gap is hold-mode-specific (12/12 vs 7/18). Diagnostic only, not adopted
+- [x] `/stt` workspace: independent STT client + read-only timeline fetcher, boundary rules (`stt-isolated`, `stt-no-voice-output-reference`), 8 protocol tests
+- [x] Option C: `reliability/src/reconcile.ts` (pure) validated on 33 real sessions (11/11 stale sessions flagged, 0 false positives); stored `user_confidence` is constant 1.0 (uninformative)
+- [x] D-20: duplicate tool calls: `NO_CHANGE`, call-id idempotency, `noopResult`; 5 tests
+- [x] **OWNER REVIEW of spike A verdict before Step 5 begins**  *(approved; Step 5 proceeded, D-19/D-23)*
+- [x] **STOP AND REPORT** spike findings + go/no-go to the owner (done; awaiting review)
+
+## Step 4 — Evidence/extraction layer  ✅ complete (2026-09-20); real-speech validation still open (below)
+- [x] **Ingest** (`reliability/src/ingest.ts`): every event from every source -> lossless `events_raw`, then `utterances`, `vad_events`, `entities`, all with provenance (entities carry `source_utterance_id`, FK-enforced; a later correction supersedes the earlier quantity). Storage failures are counted and reported, never thrown into the audio/event path. Schema v2 with in-place column migration
+- [x] **Derived barge-in (D-02, D-18):** `BargeInDeriver` + `reply_audible` (audible-only). On the REAL captures (same `WireEventStream` as live): exactly the 2 real interruptions derived (reaction 0-1 ms on the server clock), 0 false positives across 45 other captures (backchannels, hold-mode silence, clean)
+- [x] **Text-instability (D-03)** stored per final (`instability`); complements the independent stream's per-word confidence
+- [x] **PCM recorder** (`PcmRecorder`, `sessions.audio_pointer`): byte-exact with what was sent, sha256 receipt, synchronous writes, never overwrites
+- [x] **Independent STT ingestion (D-04)**: `/stt` -> `evidence_*` events -> ingest + tracker; per-word confidence stored (`utterances.confidence` = min, `words_json`)
+- [x] **Server timestamps (D-05):** `server_ts_ms` on every agent event, persisted; verified on 100% of agent events in 3 capture sets that server order == arrival order (0 inversions), so it is safe to prefer for ordering and for the barge-in reaction time
+- [x] **Composition root (`/server`)**: `SessionRuntime` wires agent stream, independent STT, local speech check, recorder, ingest, tracker, gate and committer onto ONE shared clock; agent `tool.call` -> gated handler -> `tool.result`. Refuses to start a call it cannot validate (independent stream unreachable). Fastify API (operator token, loopback, no order-writing route), SSE, WS mic bridge (first-frame auth, origin check, frame/backpressure limits, single mic). 38 tests
+- [x] **Deterministic extractor** (55 golden tests) and **local speech check** (10 tests, measured on real captures): see the previous section of this file's history and `docs/local-vad-measurement.md`
+- [x] **Independent-stream dropout fails closed** (3 levels + real API); **local-VAD direct measurement**: done
+- [x] **Content-vs-intent coverage (owner request):** the gate validates every content dimension, not just quantity: matrix test over all 63 (item, modifier) pairs (unrequested / omitted / wrong), all 132 wrong-item pairs, all 81 quantity combinations, every tool, plus a phrase battery for extractor precision; mutation-checked (removing the modifier checks fails 4 tests, including the real-hallucination replays). Two extractor PRECISION holes found and fixed (see DECISIONS D-24)
+- [x] Event completeness test on a recorded call (data side; dashboard visibility is Step 11)
+- [ ] 🚧 **Real-speech validation pass:** tooling, protocol and FIXED criteria are done (`docs/real-speech-validation.md`; harness dry-run proven against the real APIs with a synthetic recording); **the pass itself is NOT RUN and needs the owner to name a date and 3+ speakers**. Not blocking Step 4's completion, but Step 6 is not demo-ready until it has run once
+
+## Step 5 — Action gating  ✅ implemented; owner review of the test report pending
+- [x] `gate.submit`: schema -> evidence-driven settle on the independent stream -> extract -> judge -> projected diff -> verdict -> commit -> read-back. **Total function** (any exception => HOLD `UNVALIDATABLE`); single ALLOW mint point
+- [x] Evidence wait: hold while local VAD / independent `SpeechStarted` / un-finalised partial / speech ended without a final; bounded by `EVIDENCE_WAIT_MAX_MS` (4000) => `PENDING_EVIDENCE`; stream down/unknown => `UNVALIDATABLE` immediately; stall (speech, no independent signal within 2500 ms) => `UNVALIDATABLE`
+- [x] Low per-word confidence (< `MIN_WORD_CONFIDENCE` 0.6) on a quantity/item span, or an ambiguous homophone quantity => HOLD `UNVALIDATABLE`
+- [x] `NO_CHANGE` is a non-conflict, non-committing ALLOW(noop); never converts a HOLD into an ALLOW (D-20)
+- [x] Committer transaction + audit pair; **read-back** (`TOOL_RESULT_LIE`, incl. a committer that reports success but wrote nothing); spoken-drift checker (`SPOKEN_STATE_DRIFT`, `TOTAL_MISMATCH`); held/conflict calls recorded with evidence provenance, `orders` untouched
+- [x] **Confirm-time reconciliation (D-22):** `confirm_order` is held unless the committed order equals what the customer said (closes the "correction began after the call and the agent never applied it" hole)
+- [x] Plane 1 `createGatedHandler`: the only tool path; agent has no DB handle; spike stub unreachable (isolation test)
+- [x] Gate verdict table: **70 rows** (business-outcome assertions: HOLD => `orders` byte-identical; ALLOW => exactly the spoken change + one paired audit row)
+- [x] Fail-closed property test: **600 seeded scenarios with an independent oracle** (soundness, fail-closed, completeness; 0 false holds); **mutation-checked** (3 gate mutations each caught)
+- [x] **Evidence-tier replay of the 21 REAL spike-A captures through the real gate** (deterministic): the 8 stale calls with unresolved correction speech are ALL held `QTY_MISMATCH(3)` (gate waited 1175-2375 ms, median 1650); 6 already-correct calls allowed; 3 clean allowed with 0 ms wait; 3 corrections-after-the-call allowed (documented inherent limit); 2 real agent hallucinations held (`no_onions`x5 from "no wait"; `size_large`)
+- [x] Deliberately wrong claim held, `orders` unchanged  *(§19: mismatched result held not committed)*
+
+## Step 6 — Targeted repair  ✅ implemented + unit/integration tested (2026-09-20)  🚧 NOT VALIDATED / NOT DEMO-READY (two separate conditions, D-27)
+- [x] Repair templates per conflict code (all 16 codes; enum-exhaustiveness test); wording fix for removal disputes ("keep 1 on the burger" -> a real question)
+- [x] **Scope = the disputed item only**: attempts are counted per item (`repair_events.scope`; `'order'` for whole-order disputes); a test proves no ask/escalation text for any of the 12 items x 16 codes names a different menu item
+- [x] **Attempt counter + escalation:** N = 2 scoped asks, then `escalated` (hand-off wording, not a question); the item stays uncommitted, other items are still allowed and byte-identical; a later valid call is safe to commit (history keeps `outcome=escalated`); a new dispute restarts at attempt 1
+- [x] **Resolution only by re-validation:** `repair_events.outcome=resolved` is written in the SAME transaction as the commit that re-passed every gate check (or by a validated NOOP repeat); the customer saying "yes" alone never resolves it
+- [x] **Persistence:** repair row written in the same transaction as the hold (`tool_calls` + `audit_events` + `repair_events`); schema v3 (`scope`, `alt_scope`), in-place migration; `TallyEvent` kind `repair` (asked/escalated/resolved) emitted for the timeline and call log
+- [x] Instruction-only output; boundary test: no voice-output path in `/reliability` (script still green; the adapter is the only place instructions become wire content)
+- [x] Scenario B at spike-A timings: HELD -> repair -> confirmed -> ALLOWED; other items untouched (`reliability/test/repair.test.ts`)
+- [x] Mutation-checked: dropping resolve-on-commit fails 4 tests, dropping escalation fails 3, letting agent-misuse holds ask the customer fails 1
+- [ ] 🚧 **Validation condition 1 — real-speech pass (evidence/extraction accuracy on real human phrasing):** tooling + FIXED criteria done, **not yet scheduled or run** (needs owner: date + 3+ speakers). See `docs/real-speech-validation.md`
+- [ ] 🚧 **Validation condition 2 — live-mic session exercising the ACTUAL repair loop and barge-in over the agent:** needs the Step 11 dashboard mic page (a recorded WAV cannot answer the agent's re-ask). Must show against the real agent: (a) it speaks the scoped question from `HELD`, (b) the customer's answer leads to a re-issued call that re-validates, (c) after two failed asks the agent hands off and continues the rest of the order, (d) a customer interrupting the agent mid-question is derived as a barge-in and the repair still resolves
+- **Rule: these are two independent conditions. A passing real-speech pass does NOT mark repair as validated, and neither does a passing live-mic session mark evidence accuracy as validated. Step 6 is demo-ready only when BOTH have passed and the results are committed.**
+- *What the automated tests do NOT prove:* that the real agent follows the HELD instruction, phrases the question sensibly, or copes with an escalated result. Those are exactly what condition 2 measures
+
+## Step 7 — Automatic regression/case creation  ✅ implemented + tested (2026-09-20)
+- [x] **Case snapshot in the same transaction as the hold and its repair record:** audio pointer (+ offset at the call), independent-stream transcript, the tool call, the verdict and evidence, `order_before`, and the stored normalised events up to the verdict (enough for Step 8's evidence-tier replay). Immutable columns (trigger); cases are never deleted
+- [x] **No case without stored audio AND stored events** (no seeded rows): a hold with no recording on disk, or no stored events, or in a `replay` session is skipped, and never silently: audited as `case_skipped:<reason>`. Test: every case's audio file exists and its session has stored events
+- [x] `pattern_key` = `conflict_type | tool | cue_class | position` (deterministic, no LLM; readable, not hashed): `QTY_MISMATCH|add_item|correction|mid_item` vs `...|after_item`, plain restatement, modifier phrase, and evidence-unavailable causes (stream_down / low_confidence / evidence_timeout / no_evidence)
+- [x] **Tagger:** same pattern x3 => every case of the pattern becomes `regression_candidate`, exactly on the 3rd (cases 1-2 stay `none`; a 4th is tagged on arrival); different patterns never collide; `REGRESSION_THRESHOLD` configurable; idempotent per `tool_call_id`
+- [x] **Resolution + expected state:** `cases.resolution` = open / resolved / escalated / unresolved_at_hangup / no_repair. `expected_state_json` is set ONLY when a repair resolved by a re-validated commit, and equals the order the gate just validated. Escalated and unresolved cases never get one
+- [x] **Hangup:** `endSession` (in one transaction) turns every still-open dispute into an `unresolved_at_hangup` pending case: no expected state, cannot become a regression
+- [x] **Promotion to `regression`** only through `acceptRegression` (operator; auto-accept is deliberately NOT enabled): requires tag=candidate, resolution=resolved and an expected state; audited
+- [x] API: `GET /api/cases` (+`?tag=&session_id=`), `GET /api/cases/:id`, `GET /api/regressions/count` (cases / candidates / regressions / patterns_flipped), `POST /api/cases/:id/accept` (operator token; never writes an order); SSE `case` event
+- [x] Mutation-checked (threshold off-by-one, expected-state write, hangup marking, resolved-only acceptance: each caught)
+- [x] UI (Cases tab, live counters): done in Step 11. **Still not validated against real speech (D-26/D-27):** pattern keys and cue classes were built from synthetic and captured phrasing
+
+## Step 8 — Operator lab (replay runner)  ✅ implemented + tested (2026-09-20)
+- [x] **Evidence tier (deterministic):** `replayEvidence` re-feeds the case's stored events through the CURRENT ingest -> evidence tracker -> extractor -> gate on a virtual clock in a throwaway `mode=replay` database (events that arrived while the gate was waiting are delivered at their original time). Live state is never touched; only a `replay_runs` row is added
+- [x] **Verdict semantics (D-30):** with an expected state (resolved repair) the recorded call is judged against what the customer validated (a call that would produce a different line must be HELD; one that matches must be ALLOWED); holds caused by missing evidence (stream down / wait expired / nothing finalised) must keep holding; cases with no expected state assert only "a held call stays held"
+- [x] **Determinism test:** run 3x => byte-identical `diff_json` and verdict (also over HTTP); known-fixed case => PASS; deliberately broken build (extractor echoing the claim) => FAIL "SAFETY_REGRESSION"; mutation-checked (late events dropped, hold-check removed, evidence events dropped: each caught)
+- [x] **Audio tier (k=3, 1x):** `runAudioReplay` streams the stored PCM in real time into k fresh live sessions (`mode=replay`, same `SessionRuntime` as live), judges the FINAL order from the database against the expected state, records one `replay_runs` row per attempt under one `suite_run_id`. All k must pass: "3/3 passed", "2/3 passed: FAIL". A run that cannot start, or where the agent never called a tool, is a recorded FAIL, never dropped. Never labelled deterministic (test asserts no "determin" anywhere in audio-tier wording)
+- [x] API: `POST /api/cases/:id/replay?tier=evidence|audio[&k=]` (evidence synchronous; audio 202 + `GET /api/replays/:suite_run_id`), `GET /api/cases/:id/replays` (labels produced only by `describeReplay`); one audio job per case at a time; token required
+- [x] `npm run replay:case -- <case_id> --tier=evidence|audio` (operator script)
+- [x] UI (Replay button, diff viewer): done in Step 11
+- [ ] 🚧 **Audio tier not yet run against the REAL managed agent.** It is proven with mock Voice Agent/STT servers only (wiring, pacing, k-accounting, judging). A real run needs a real resolved case, i.e. a real hold + resolution, which needs the live-mic session (Step 6 condition 2 / Step 11). Until then no claim is made about real-agent repeatability
+
+## Step 9 — Safe promotion and rollback  ✅ implemented + tested (2026-09-20)
+> **VALIDATION STATUS (read before quoting a promotion result): the promotion gate inherits the current validation status of the regression suite it depends on. That suite is operator-accepted cases from SYNTHETIC and CAPTURED phrasing only. The real-speech validation pass (D-26) and the live-agent / live-mic validation (D-27) have NOT run. A PASS means "no KNOWN failure regressed"; it is not evidence of general reliability on real callers. The evidence tier exercises the gating parameters, not the agent prompt. The same notice is attached to every suite report and promotion response (`SUITE_VALIDATION_NOTICE`).**
+- [x] **Config registry (rule 4):** versions immutable and never overwritten (`CONFIG_EXISTS`; DB triggers reject UPDATE of prompt/schema/params/parent and any DELETE); `prompt_hash` + `tool_schema_hash` verified on every load (a row that fails its hash is never trusted: suite blocks, activation refuses); the tool schema is always the contract's (a config cannot weaken hold mode); gating parameters validated (whitelist + ranges); parent defaults to the active version; append-only `config_events`
+- [x] **"Run all cases" (manual trigger):** `POST /api/suite/run {config_version}` runs EVERY `regression`-tagged case through the evidence tier with the candidate's gating parameters (mandatory, deterministic, 100%). Candidates and untagged cases are not in the suite. An empty suite passes **vacuously and says so**
+- [x] **Block promotion on any regression case failing:** one failing case blocks; the response names the case, its pattern, the tier and the reason (e.g. `SAFETY_REGRESSION_now_allowed_but_must_be_held`); the promote endpoint repeats the blocking cases
+- [x] **The gate is enforced at the data layer, not just the API:** `activate` requires a suite run that is for exactly this version, PASSED, ran exactly the regression set that exists now (a case accepted since makes it STALE), and has not been used before (single use); otherwise it throws and writes nothing
+- [x] **A changed prompt cannot be promoted on evidence-tier results alone (D-31):** if the prompt or tool schema differs from the parent and there are regression cases, the audio tier (k=3, live agent, candidate prompt) must run and pass, else `AUDIO_TIER_REQUIRED`. Audio errors/failures block and are named
+- [x] **Rollback:** re-activates the parent of the active version; the parent must itself have been active before and verify its hashes; a baseline has nothing to roll back to
+- [x] Compare table (cases x config versions), suite runs stored (`suite_runs`, evidence runs grouped by `suite_run_id`); `GET/POST /api/configs`, `/api/configs/active`, `/api/configs/:v`, `/api/suite/run`, `/api/suite/:id`, `POST /api/configs/:v/promote`, `POST /api/configs/rollback`, `GET /api/compare`
+- [x] **Promotion changes real behaviour:** new sessions start on the ACTIVE config (prompt + gating parameters); `startServer` bootstraps baseline `v1` from this build once
+- [x] Mutation-checked (status check, staleness check, single-use check, audio-required rule: each caught)
+- [x] UI (Promotion view, Compare table): done in Step 11
+- [ ] `turn_detection` is not part of a config yet (stored as `{}`): the agent session does not take it as an option, and storing a knob that is not applied would be a false record
+
+## Step 10 — Close the loop in runtime  ✅ implemented + tested (2026-09-20); 🚧 NOT validated against the real agent
+- [x] **Post-repair commit path:** a repair resolves only through a call that re-passed every gate check, in the same transaction as the commit (Step 6, re-verified end to end here); the total is RECOMPUTED from the lines everywhere it can reach a customer (`okResult`, `orderStateResult`, `noopResult`) and the gate's read-back now compares the stored total with the recomputed one (`TOTAL_MISMATCH` incident)
+- [x] **Spoken drift is detected and repaired (`Gate.handleAgentSpeech`):** what the agent SAYS about quantities, items and the total is checked against the COMMITTED order (never the reverse). A disagreement is stored like any disputed claim (a `tool_calls` row for tool `agent_speech`, its `repair_events` row, and a case) and returned as a data-only `RepairInstruction` stating what is TRUE (the real quantity, the recomputed total)
+- [x] **Delivery is Plane 1's job:** the composition root hands the instruction to `AgentSession.correct()`, which sends a one-shot `reply.create` (wording from `driftInstruction`), queued until any reply in flight is done so a correction never talks over the agent or the customer. Tally (`/reliability`) has no path to it; the wire now carries exactly `session.update`, `input.audio`, `tool.result`, `reply.create` (asserted)
+- [x] **Independent accounting:** drift repairs are counted, escalated (2 corrections, then ONE hand-off, then silence: no correction loop) and resolved separately from hold repairs on the same item. Later agent speech that states the scope correctly resolves it (silence about it does not; a wrong restatement does not); a re-validated commit never resolves a drift and agent speech never resolves a hold dispute
+- [x] **Guards against a false correction:** an order that changed while the agent was speaking, and interrupted (partial) replies, are skipped and audited; the same utterance is never raised twice; questions and offers make no claim
+- [x] Drift cases replay deterministically through the CURRENT drift check (`basis: drift_detection`); a broken check FAILS; unresolved drifts at hangup become `unresolved_at_hangup` cases like any other
+- [x] **Full scenario B end to end from fixture audio** (the real `no_wait_three.wav` streamed at 1x through recorder, VAD, independent stream, gate, committer): HELD -> repair -> confirmed -> ALLOWED; `items_json` = burger x3, total 2697; the audit chain is paired and unbroken (every order change has an audit row whose validation id matches the stored tool call and the order's `last_validation_event_id`); agent mis-states quantity AND total aloud -> two corrections sent -> both resolved
+- [x] Mutation-checked (order-version guard, escalation stop, hold/drift separation, resolution-by-correct-statement: each caught)
+- [ ] 🚧 **Not validated on the real agent:** whether the real managed agent obeys a `reply.create` correction, phrases it well, or stays quiet after a hand-off is unmeasured (mock Voice Agent only). Belongs to the live-mic session (Step 6 condition 2). The drift CHECK itself is regex/claim-extraction on synthetic and captured phrasing (no real-speech pass yet)
+- [x] UI (order panel, call-log REPAIR lines): done in Step 11
+
+## Step 11 — Operator dashboard  ✅ implemented + tested (2026-09-21)
+- [x] Live view (SVG evidence timeline with three lanes, ◆ derived barge-in markers with both source ids, independent-stream ticks, call bars colour-coded AND text-labelled by verdict; transcripts side by side; call log with REPAIR/CASE/barge-in lines; order panel; the gate's WAITING chip with a live countdown; the stream-down chip), Cases browser (stored case, recording player, evidence, expected state in words, replay buttons, diff viewer, operator accept), Lab (configs, run all cases, promote/rollback, blocked-promotion reasons naming cases, compare table cells PASS/FAIL + audio k/3, adversarial harness), Metrics strip and tab, counters (cases / candidates / regressions / accuracy n/N)
+- [x] **Mic page** (browser microphone → 24 kHz PCM16 20 ms frames → `/ws/mic` authenticated by its first frame; the agent's audible reply comes back as PCM and is played): resampler/framer unit-tested; the capture path itself needs a human at a browser (below)
+- [x] Static hosting under a strict CSP (script/style/connect same-origin only, no inline script); the token is kept in `sessionStorage`, sent as a header, never in a URL; every string is escaped; agent-supplied tool names/item ids are never echoed
+- [x] Tests: reducer over REAL captured streams (14), UI through the DOM with an in-memory server (12), **end-to-end over real HTTP + SSE with the real server and pipeline (2)**, a11y (WCAG AA contrast of every status pair; colour never the only signal), escaping, words-not-ids surface audit (7), mic helpers
+- [x] Deviation logged (D-33): plain TypeScript + string views bundled with esbuild instead of React/Vite/Playwright (fewer moving parts; jsdom for DOM tests)
+- [ ] **Not done: a real-browser session** (Playwright/real Chrome with a real microphone). jsdom is not a browser: layout, real audio capture and playback are untested here
+
+## Step 12 — Observability  ✅ implemented + tested (2026-09-21)
+- [x] Latency per stage (STT, gate, repair, commit, first audio, barge-in) with p50/p95 (nearest rank), computed from stored rows at request time (`GET /api/metrics`, `computeMetrics`); labelled client-observed. Plus conflict rate, repair success rate, false-positive holds (judged holds only), regression pass rate, final order accuracy n/N (over sessions with a DECLARED intent)
+- [x] Every number recomputed independently from raw rows in tests; slow-commit test (commit stage rises); scripted timeline with known latencies; a wrong declared intent lowers accuracy
+- [x] `t_commit_ms` now stores the commit's DURATION (it stored a clock reading before)
+- [x] Re-measured on the live runs: STT stage p50 ≈ 300 ms / p95 ≈ 421 ms, gate p50 1.7 ms, first audio p50 3.0 s (tiny n; `docs/live-repair-validation.md`). **`EVIDENCE_WAIT_MAX_MS` stays at 4000** (spike A worst 3470 ms; the live runs never needed to wait). `MIN_WORD_CONFIDENCE` stays 0.6: no real-speech data yet
+- [ ] `metrics_samples` is not used: metrics are computed from the primary rows instead (fewer copies to drift); the PRD's table is left unused
+
+## Step 13 — Privacy/security  ✅ verified (2026-09-21)
+- [x] No real customer PII: a scan of every text file (sources, docs, fixtures, captures) for emails, phones, SSNs, valid card numbers and addresses finds none; the schema has no PII-capable column; demo audio is synthetic with pinned hashes; the recording protocol forbids personal data
+- [x] Secrets server-side only: the built bundle contains no key, token, AssemblyAI host or bearer header; no browser request can name AssemblyAI (source scan); no log line contains the key or token; `.env` and `data/` are git-ignored; `.env.example` has no values; `scan:secrets` reads `.env` for the literal key
+- [x] **The eight-defect-class final pass** (D-36): values that should not reach a surface unfiltered. Found and fixed: the case API returned the server's absolute recording path (twice: `audio_pointer` and inside the snapshot); the dashboard printed raw item ids and agent-chosen tool names; internal pattern keys were shown as machine strings; errors could carry framework text. Customer-audible strings were audited in D-28 and re-audited for the new drift/hand-off wording
+- [x] README security note
+- [ ] TLS/multi-user auth remain out of scope (loopback, single operator token)
+
+## Step 14 — Adversarial tests  ✅ implemented + tested (2026-09-21)
+- [x] Harness (`npm run adversarial`): **88 seeded lies** through the real gate/committer/SQLite on a virtual clock + **15 clean calls that must be allowed**: gate 39, repair 5, spoken drift 8, promotion/registry 36. The whole PRD list is present; catalogue generated as `adversarial-cases.md` (the test fails if it drifts)
+- [x] 88/88 caught, 0/15 false holds; a deliberately broken build (no evidence wait, no confidence floor) makes the harness FAIL; CI fails on any uncaught case
+- [x] HTTP surface: 700 seeded hostile requests to the Step 6-11 routes: never a 5xx, never a leak, registry untouched; oversize body 413, malformed JSON 400
+- [x] **Defects the harness found and fixed (D-37):** the spoken-drift check was quadratic in the length of one sentence (a 190 KB agent reply took 11 s on the event loop); an unbounded customer utterance likewise (now held); gating-parameter validation accepted `constructor`/`toString` keys (prototype lookup); config versions named `constructor` were accepted (used as object keys downstream); prompts were unbounded; a non-string suite id reached the SQL binder (500); malformed JSON returned 500; the seed helper could not re-seed an order
+
+## Step 15 — Deterministic demo mode  ✅ implemented + tested (2026-09-21)
+- [x] Prerecorded synthetic clips checked in (`demo/clips`, hashes pinned); scenarios A, B, C, D plus `confidence` and `dropout`; `npm run demo -- <name>|all`, `POST /api/demo/:scenario`, dashboard buttons; `npm run demo:seed`
+- [x] Two runs from a fresh DB produce byte-identical normalised output (A, B, confidence, dropout); D and C asserted structurally; every experience ends in its DECLARED intent; A: $20.47 confirmed, B: 3 burgers $26.97 with a derived barge-in and a visible gate wait, D: three cases → three regression candidates
+- [x] **What is scripted is labelled everywhere** (D-34): the agent and the "independent" transcripts. This replaces the PRD's "real AssemblyAI session" for demo mode; the live mode remains real and non-deterministic
+- [ ] Offline evidence-replay fallback wording ("EVIDENCE REPLAY (offline)") is subsumed: deterministic mode is fully offline
+
+## Demo lock gate (owner decision, 2026-09-20) — status 2026-09-21
+- [ ] 🚧 **Real-speech validation pass:** **NOT RUN.** Tooling, protocol, fixed criteria ready; needs a date and 3+ speakers from the owner. **Known limitation until it runs; stated in README, DEMO.md and the Lab tab**
+- [x] **Live-agent repair loop (Step 6 condition 2), automated form: RUN, 10/10 checks** (`docs/live-repair-validation.md`): real agent + real STT, synthetic customer, holds induced. Found and mitigated one issue (agent changed a number in the repair question)
+- [ ] 🚧 **Live human-microphone session:** **NOT RUN by a human.** The mic page is built; the human session is written up in `docs/live-repair-validation.md`. **Known limitation until it runs**
+- [ ] 🚧 **Promotion gate is only as strong as its regression suite** (D-31): synthetic/captured cases only. **Known limitation, on screen in the Lab tab**
+- [x] DEMO.md beats 5b (the gate visibly WAITS) and 8b (stream dropout, fail closed) present and backed by scenarios `B` and `dropout`, asserted end to end through the UI
+- [x] **A manually-accepted regression case exists** (`npm run demo:seed`: three `confidence` cases → candidates → the operator accepts one, audit-logged) so the promotion gate BLOCKS a weakened config (v2) by naming the case instead of passing vacuously; tested by running the real script
+
+## Final acceptance (brief §19) — status 2026-09-21
+- [x] Clean order, prerecorded audio (scenario A: $20.47 confirmed; live-agent clean order on real speech is part of the pending real-speech/live-mic work)
+- [ ] Clean order, live audio: **not demonstrated with a human**; the real agent handled synthetic-voice orders in the live runs
+- [x] Mid-sentence correction → barge-in visible on the dashboard (scenario B; derived from real interruption events in the live S2 run)
+- [x] Mismatched tool-call result held, flagged (gate + adversarial harness, TOOL_RESULT_LIE cases)
+- [x] Targeted repair without restarting the order (scenarios B/D, live S1)
+- [x] Resolved conflict auto-logged as a replayable case
+- [x] Three repeats auto-tag as regression candidates; the operator promotes them to regressions (D-29)
+- [x] Stored-event replay = deterministic PASS/FAIL; live-audio replay = "k/3 passed" (audio tier proven on mock and scripted agents only; against the real agent it is not yet run)
+- [x] Dashboard live timeline, latency, case count
+- [x] Final order matches DECLARED intent in the four experiences (deterministic mode); not yet measured on human speech
+- [x] No secrets in client or repo (scanned, including the built bundle)

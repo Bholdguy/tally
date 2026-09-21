@@ -1,0 +1,27 @@
+# Render Blueprint (free web service, no persistent disk). Secrets are placeholders: values are entered in Render's dashboard, never here.
+# Single instance on purpose: SQLite is single-writer and session runtimes live in memory.
+services:
+  - type: web
+    name: tally
+    runtime: node
+    plan: free
+    numInstances: 1
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build:dashboard
+    # The filesystem is empty on every boot (restart, deploy, wake from idle), so the demo data is rebuilt every time, then the server starts.
+    startCommand: npm run start:render
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: HOST
+        value: 0.0.0.0
+      - key: TALLY_ALLOW_REMOTE
+        value: "1"
+      - key: TALLY_OPERATOR_TOKEN
+        sync: false   # you set this: 16+ characters, e.g. `openssl rand -hex 16`
+      - key: ASSEMBLYAI_API_KEY
+        sync: false   # you set this
+      - key: DASHBOARD_ORIGIN
+        sync: false   # optional: the exact https://<service>.onrender.com origin (the page's own origin is accepted without it)
