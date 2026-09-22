@@ -67,7 +67,7 @@ Wording rules: say **"barge-in derived from AssemblyAI's interruption events"**,
 |---|---|
 | Real-speech validation pass (3+ human speakers, 10+ recordings each, criteria fixed in advance) | **NOT RUN.** Tooling, protocol and criteria are ready (`docs/real-speech-validation.md`); it needs a date and recruited speakers. Until it runs, accuracy claims are limited to synthetic and captured phrasing. |
 | Live-agent repair loop | **Run once, automated** (`docs/live-repair-validation.md`): real agent, real STT, synthetic customer voice, holds induced by fault injection. It found and fixed one issue (the agent changed a number in the repair question). |
-| Live **human microphone** session | **NOT RUN by a human.** The mic page is built and tested; it needs a person and a microphone. |
+| Live **human microphone** session | **Run 2026-09-23** (`docs/live-repair-validation.md` Part 2): real person, real mic, real managed agent. The correction was caught, the call held correctly, the repair question fired and resolved correctly (3 classic burgers, $26.97), the case stored correctly. **Barge-in and the two-failed-asks hand-off were not exercised by a human this run** — those remain open. |
 | The promotion gate's regression suite | Synthetic and captured phrasing only; a pass means "no known failure regressed", not "reliable on real callers". |
 
 ## Demo-lock gate (owner decision, 2026-09-20)

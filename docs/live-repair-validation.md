@@ -1,8 +1,8 @@
-# Live repair validation (Step 6, condition 2) — automated form
+# Live repair validation (Step 6, condition 2)
 
-**Status: run and recorded (2026-09-21). NOT a human-microphone session, and not a measurement of evidence accuracy.** The human-on-a-microphone session is still pending on the owner (see the end).
+**Status: BOTH forms have now run.** The automated form (2026-09-21, below) drove the real agent with a prerecorded synthetic voice and an induced fault. The **human microphone session** (2026-09-23, at the end of this file) is the real thing: a person, a real microphone, the real managed agent, no induced fault — Step 6 condition 2 is satisfied.
 
-## What was run
+## Part 1 — automated form: what was run
 `npx tsx --env-file-if-exists=.env scripts/live-repair-session.ts all`
 
 - The **real managed Voice Agent** and the **real AssemblyAI streaming STT**, driven through the real `SessionRuntime` (recorder, local speech check, evidence tracker, gate, committer, drift check), the same runtime the dashboard's mic page drives.
@@ -48,10 +48,43 @@ STT stage (end of customer speech → independent final): p50 ≈ 300 ms, p95 �
 - One run per check with the final wording (plus repeats of S1); the managed model is not seedable, so results can differ tomorrow.
 - The dashboard mic page (browser capture, resampling, WebSocket, playback of the agent's voice) was tested with unit tests and a fake mic, not driven by a real browser microphone.
 
-## Still pending on the owner: the human microphone session
-1. `npm run serve` (it builds the dashboard), open `http://127.0.0.1:8787`, sign in with the operator token.
-2. **Start live call**, then **Use microphone** (allow the browser prompt). Wait for the agent's greeting to finish.
-3. Say: "Two burgers, no wait, make it three." Watch the timeline (beat 5b), the REPAIR line, the order panel.
-4. To provoke a repair reliably the managed agent may need help; if it gets the order right, that is a clean pass. Speak over the agent's question once to see the barge-in marker.
-5. Speak only menu items; do not say real personal data (SECURITY §1). End the call, open the case in the Cases tab, replay it.
-Record what you observed in this file (date, who, what happened, including failures).
+## Part 2 — human microphone session (run 2026-09-23)
+
+**Run by the owner**, real browser microphone, real managed Voice Agent, real independent STT stream, no induced fault — this is what Part 1 could not exercise (a live person, real ASR errors, a real barge-in opportunity). Session `sess_4bb6b5ea-0d9c-4280-96d6-a44c085315eb`, case `case_639c0db7-1bda-4621-ae93-0f6ebbc2f4a7` (`bbc2f4a7`), origin `live`, resolution `resolved`.
+
+**What was said:** "2 burgers" then, before the item was confirmed, "no wait, make it 3."
+
+| Check | Result |
+|---|---|
+| Independent stream catches the correction the agent's own recognizer missed | **PASS** — the agent's own recognizer initially missed the correction; the independent stream caught it |
+| Gate HOLDs (`PENDING_EVIDENCE`) rather than guessing while evidence is still arriving | **PASS** — held correctly when the 4 s evidence wait timed out |
+| Repair question fires, scoped to the disputed item | **PASS** (repair-question accuracy) — the agent asked naturally: *"Sorry, I want to be sure I got the classic burger right, could you say that once more?"* |
+| Repair resolves correctly from the customer's answer | **PASS** (resolution) — answered "No wait, make it 3"; the call re-validated and committed |
+| The order never shows a wrong value at any point (not held-then-wrong, not partially wrong) | **PASS** — final order: 3 classic burgers, $26.97, matching what was actually said throughout |
+| Case stored correctly (transcript snapshot, evidence log, origin, resolution) | **PASS** — case `bbc2f4a7` present and complete in the Cases tab |
+| Barge-in derived while speaking over the agent | **NOT TESTED in this pass** — not attempted this run |
+
+**Two things flagged during the run, both investigated and resolved below:** an "evidence stream DOWN" notice at call end, and the audio player stopping early on replay.
+
+### Flag 1: "independent evidence stream DOWN (socket closed (code 1005))" at 80.2 s
+
+**Expected clean-shutdown behavior. No action needed.** Confirmed directly from the session's own stored event log (`events_raw`), not just by reading the code:
+
+| Event | `t_ms` | `audio_offset_ms` |
+|---|---|---|
+| `evidence_stream_status: up` | 1,460 | 0 |
+| `session_ended` | 80,095 | 55,780 |
+| `evidence_stream_status: down` (`socket closed (code 1005)`) | 80,241 | 55,780 |
+
+The DOWN status was emitted **146 ms after** `session_ended`, i.e. as a direct consequence of ending the call, not a mid-call drop. `SessionRuntime.end()` (`server/src/runtime.ts`) always calls `stt.terminate()` on the way out, which sends the independent stream a `Terminate` message and then closes the socket; `SttStream`'s close handler (`stt/src/stream.ts`) unconditionally reports the stream `down` on *any* close, clean or not — "so the gate can fail closed promptly" is a deliberate design choice, not a bug (D-04). Code **1005** ("No Status Rcvd") is what `ws` reports whenever `.close()` is called with no explicit status code, which is exactly what `terminate()` does; it does not indicate an abrupt or unexpected drop. Nothing to fix. The `evidence_stream_status: down` line appearing in the call log right as a call ends is the expected shape for every session, live or demo.
+
+### Flag 2: audio player stopped after ~5 s of a 55.78 s recording
+
+**Confirmed: not a data-loss issue.** Checked directly against the file on disk, not just the code:
+
+- `data/audio/sess_4bb6b5ea-....pcm` is **2,677,440 bytes** on disk = 55.78 s at 24 kHz/16-bit/mono PCM — matching `audio_offset_ms: 55,780` recorded at `session_ended` exactly. The full recording is intact; nothing was truncated during capture or storage.
+- The case's `audio_pointer` is the session's own pointer (cases never get a separate, possibly-truncated clip; `committer-cases.ts` copies the session's full `audio_pointer` verbatim), so `/api/cases/:id/audio` serves this same complete file.
+- `pcmToWav()` (`server/src/routes-extra.ts`) writes a standard 44-byte WAV header with the RIFF and `data` chunk sizes both computed from the *full* PCM buffer length — the header correctly declares 55.78 s, so a compliant player should know the true duration up front, not learn it progressively.
+- The dashboard's `audio` action (`dashboard/src/main.ts`) fetches the whole response via `fetch(...).blob()` (which only resolves once the complete body has been read) and never calls `revokeObjectURL` on it, so nothing on the client discards or truncates the blob after creation.
+
+Every layer checked — capture, storage, the case's pointer, the WAV header, the fetch — is byte-complete and correctly declared. This narrows the cause to the browser's own `<audio>` playback of the `blob:` URL, which I can't reproduce or instrument from here. If it recurs: check the browser console for a decode/media error on that `<audio>` element, and try **right-click → Save As** or dragging the blob to a new tab to see whether the saved file plays fully outside the dashboard (which would confirm it's a player/rendering quirk, not the file). Tell me the browser/OS and any console error and I'll dig further; for now this is recorded as an open, non-data-loss playback issue, not fixed.
