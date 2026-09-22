@@ -1,15 +1,17 @@
 // HTTP / SSE / WebSocket surface of the composition root (SECURITY §3). The dashboard (Step 11) and the mic bridge talk to THIS,
 // never to AssemblyAI: no credential of any kind reaches a browser. There is no route that writes an order: the only write path
 // is Gate -> committer inside a SessionRuntime (rule 8).
-import { createHash, timingSafeEqual } from 'node:crypto';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { WebSocketServer } from 'ws';
 import type { TallyEvent } from '@tally/contract';
 import { toolDeclarations } from '@tally/contract';
 import { ConfigError, describeReplay, replayEvidence, ReplayError, runSuite, SUITE_VALIDATION_NOTICE, type Store, type SuiteReport } from '@tally/reliability';
+import { clearSessionCookie, isOperator, parseCookies, SESSION_COOKIE, SessionStore, setSessionCookie, tokenMatches } from './auth.js';
 import { runAudioReplay, type AudioReplayReport } from './replay-audio.js';
 import type { RuntimeOptions, SessionRuntime } from './runtime.js';
 import { registerExtraRoutes } from './routes-extra.js';
+
+export { tokenMatches } from './auth.js'; // re-exported: existing imports of `tokenMatches` from this module keep working
 
 export interface AppOptions {
   operatorToken: string;
@@ -30,6 +32,8 @@ export interface AppOptions {
   authTimeoutMs?: number;         // default 5000: first WS frame must authenticate
   /** how long a FINISHED session stays attachable (live SSE) before it is dropped from memory; stored data is unaffected (default 60000) */
   endedGraceMs?: number;
+  /** D-39: minimum ms between ACCEPTED `/api/demo/:scenario` starts (default 3000), guarding the public unauthenticated route against spam */
+  demoMinIntervalMs?: number;
 }
 
 /**
@@ -42,12 +46,6 @@ export function originAllowed(origin: string | undefined, host: string | undefin
   if (origin === undefined) return true;
   if (allowed && origin === allowed) return true;
   try { return !!host && new URL(origin).host.toLowerCase() === host.toLowerCase(); } catch { return false; }
-}
-
-const digest = (s: string) => createHash('sha256').update(s).digest();
-export function tokenMatches(provided: unknown, expected: string): boolean {
-  if (typeof provided !== 'string' || !provided) return false;
-  return timingSafeEqual(digest(provided), digest(expected)); // constant-time; equal-length digests
 }
 
 export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; runtimes: Map<string, SessionRuntime> }> {
@@ -75,14 +73,34 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
     for (const [id, rt] of runtimes) if (rt.endedAt !== undefined && now - rt.endedAt > grace) { runtimes.delete(id); micAttached.delete(id); }
   };
 
-  // every /api route requires the operator token (header only; never in a URL)
-  app.addHook('onRequest', async (req, reply) => {
-    if (!req.url.startsWith('/api/')) return;
-    prune();
-    if (!tokenMatches(req.headers['x-tally-operator'], o.operatorToken)) return reply.code(401).send({ error: 'unauthorized' });
+  // Two access tiers (D-39): GUEST (no login) reads everything and can trigger a demo scenario playback; OPERATOR (session-cookie
+  // login, OR the `x-tally-operator` header used by scripts) unlocks every mutating route. Every /api request is pruned; only the
+  // routes that write something call `requireOperator` (a guest hitting one gets 403, never a silently missing button).
+  const sessions = new SessionStore();
+  app.addHook('onRequest', async (req) => { if (req.url.startsWith('/api/')) prune(); });
+  const amOperator = (req: FastifyRequest): boolean => isOperator(req, o.operatorToken, sessions);
+  const requireOperator = (req: FastifyRequest, reply: FastifyReply): boolean => {
+    if (amOperator(req)) return true;
+    reply.code(403).send({ error: 'forbidden', message: 'operator sign-in required' });
+    return false;
+  };
+
+  app.post('/api/login', async (req, reply) => {
+    const body = (req.body ?? {}) as { token?: unknown };
+    if (!tokenMatches(body.token, o.operatorToken)) return reply.code(401).send({ error: 'invalid_token' });
+    setSessionCookie(req, reply, sessions.create());
+    return { ok: true, role: 'operator' };
   });
+  app.post('/api/logout', async (req, reply) => {
+    sessions.destroy(parseCookies(req.headers.cookie)[SESSION_COOKIE]);
+    clearSessionCookie(req, reply);
+    return { ok: true, role: 'guest' };
+  });
+  // named /api/whoami, not /api/session: that path is a PREFIX of /api/sessions and Fastify's router would merge their tree nodes
+  app.get('/api/whoami', async (req) => ({ role: isOperator(req, o.operatorToken, sessions) ? 'operator' : 'guest' }));
 
   app.post('/api/sessions', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     const body = (req.body ?? {}) as { mode?: 'live' | 'demo' | 'replay' };
     try {
       const rt = await o.startRuntime({ mode: body.mode });
@@ -96,10 +114,13 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
 
   app.get('/api/sessions/:id', async (req, reply) => {
     const rt = runtimes.get((req.params as { id: string }).id);
-    return rt ? rt.state() : reply.code(404).send({ error: 'not_found' });
+    // D-39: a guest may read a DEMO session (synthetic, already reviewed); a live session's state (transcripts, order) is operator-only
+    if (!rt || (rt.mode !== 'demo' && !amOperator(req))) return reply.code(404).send({ error: 'not_found' });
+    return rt.state();
   });
 
   app.post('/api/sessions/:id/end', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     const rt = runtimes.get((req.params as { id: string }).id);
     if (!rt) return reply.code(404).send({ error: 'not_found' });
     const s = await rt.end();
@@ -107,13 +128,16 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   });
 
   // Step 7: cases. Read-only except `accept`, which can only tag an existing, resolved candidate as a regression (never an order).
+  // D-39: a guest reads DEMO-origin cases only (synthetic audio/transcripts, already reviewed, Step 13). A case from a LIVE call
+  // (e.g. the pending human-mic validation) is operator-only, exactly like the live session it came from — never listed, 404 by id.
   app.get('/api/cases', async (req) => {
     const q = req.query as { session_id?: string; tag?: string };
-    return { cases: o.cases?.listCases({ session_id: q.session_id, tag: q.tag }) ?? [] };
+    const cases = o.cases?.listCases({ session_id: q.session_id, tag: q.tag }) ?? [];
+    return { cases: amOperator(req) ? cases : cases.filter((c) => c.origin_mode === 'demo') };
   });
   app.get('/api/cases/:id', async (req, reply) => {
     const c = o.cases?.getCase((req.params as { id: string }).id);
-    if (!c) return reply.code(404).send({ error: 'not_found' });
+    if (!c || (c.origin_mode !== 'demo' && !amOperator(req))) return reply.code(404).send({ error: 'not_found' });
     // the audio itself is never served from here (pointer only); the snapshot is stored evidence, returned as parsed JSON
     // the server's file path never leaves the server: the browser gets a flag and fetches the recording by case id (/api/cases/:id/audio)
     const snap = JSON.parse(c.event_snapshot_json) as { audio?: { pointer?: string; offset_ms_at_call?: number } };
@@ -122,6 +146,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   });
   app.get('/api/regressions/count', async () => o.cases?.caseCounts() ?? { cases: 0, candidates: 0, regressions: 0, patterns_flipped: 0 });
   app.post('/api/cases/:id/accept', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     const r = o.cases?.acceptRegression((req.params as { id: string }).id, 'operator');
     if (!r) return reply.code(404).send({ error: 'not_found' });
     return r.ok ? { ok: true } : reply.code(r.reason === 'not_found' ? 404 : 409).send({ error: r.reason });
@@ -134,6 +159,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
     return reply.code(500).send({ error: 'replay_failed' });
   };
   app.post('/api/cases/:id/replay', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     const id = (req.params as { id: string }).id;
     const q = req.query as { tier?: string; k?: string };
@@ -163,7 +189,8 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   app.get('/api/cases/:id/replays', async (req, reply) => {
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     const id = (req.params as { id: string }).id;
-    if (!o.cases.getCase(id)) return reply.code(404).send({ error: 'not_found' });
+    const c = o.cases.getCase(id);
+    if (!c || (c.origin_mode !== 'demo' && !amOperator(req))) return reply.code(404).send({ error: 'not_found' });
     const runs = o.cases.listReplayRuns(id).map((r) => ({ ...r, diff: r.diff_json ? JSON.parse(r.diff_json) : null, diff_json: undefined, actual_state_json: undefined }));
     const evidence = runs.filter((r) => r.tier === 'evidence');
     const bySuite = new Map<string, typeof runs>();
@@ -183,6 +210,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   };
   const suiteJobs = new Map<string, { config_version: string; status: 'running' | 'done' | 'error'; report?: SuiteReport; error?: string }>();
   app.post('/api/configs', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     const b = (req.body ?? {}) as { version?: string; prompt_text?: string; gating_params?: unknown; parent_version?: string | null };
     try {
@@ -202,6 +230,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   app.get('/api/compare', async () => ({ table: o.cases?.compareTable() ?? [] }));
 
   app.post('/api/suite/run', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     const b = (req.body ?? {}) as { config_version?: string; audio?: boolean; k?: number };
     const version = String(b.config_version ?? '');
@@ -232,6 +261,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   });
 
   app.post('/api/configs/:v/promote', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     const v = (req.params as { v: string }).v;
     const rawSid = ((req.body ?? {}) as { suite_run_id?: unknown }).suite_run_id;
@@ -245,7 +275,8 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
       return cfgErr(reply, e, { blocking: s && s.config_version === v ? JSON.parse(s.blocking_json) : [], validation_notice: SUITE_VALIDATION_NOTICE });
     }
   });
-  app.post('/api/configs/rollback', async (_req, reply) => {
+  app.post('/api/configs/rollback', async (req, reply) => {
+    if (!requireOperator(req, reply)) return;
     if (!o.cases) return reply.code(404).send({ error: 'not_found' });
     try { return o.cases.rollbackConfig(); } catch (e) { return cfgErr(reply, e); }
   });
@@ -253,7 +284,8 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
   // Server-sent events: the live evidence stream for the dashboard (typed TallyEvents; the wire `raw` payload is not forwarded).
   app.get('/api/live/:id', (req, reply) => {
     const rt = runtimes.get((req.params as { id: string }).id);
-    if (!rt) return reply.code(404).send({ error: 'not_found' });
+    // D-39: a guest may watch a DEMO session live; a real live call's stream (transcripts, order) is operator-only
+    if (!rt || (rt.mode !== 'demo' && !amOperator(req))) return reply.code(404).send({ error: 'not_found' });
     reply.hijack();
     reply.raw.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
     const seen = new Set<string>();
@@ -305,7 +337,7 @@ export async function buildApp(o: AppOptions): Promise<{ app: FastifyInstance; r
     ws.on('close', () => { clearTimeout(authTimer); offAudio?.(); if (rt) micAttached.delete(rt.session_id); });
   });
 
-  registerExtraRoutes(app, o, runtimes);
+  registerExtraRoutes(app, o, runtimes, amOperator);
 
   app.addHook('onClose', async () => { wss.close(); for (const rt of runtimes.values()) await rt.end().catch(() => undefined); });
   return { app, runtimes };

@@ -14,7 +14,7 @@ const visible = (html: string) => html.replace(/<title>[^<]*<\/title>/g, '').rep
 const MACHINE = new Set(['add_item', 'remove_item', 'update_quantity', 'apply_modifier', 'confirm_order', 'get_order_state', 'agent_speech']);
 const ids = new Set<string>([...MENU.map((m) => m.item_id), ...ALL_MODIFIERS].filter((x) => x.includes('_')));
 
-const UI = { now: 0, scenarios: [], mic: false, busy: null, sessions: [] };
+const UI = { now: 0, scenarios: [], mic: false, busy: null, sessions: [], role: 'operator' as const };
 
 describe('no internal item or option id reaches an operator surface', () => {
   for (const name of ['A', 'B', 'dropout', 'confidence']) {
@@ -51,7 +51,7 @@ describe('hostile or unknown values are neutralised', () => {
   it('a stored case with hostile fields renders inert (case list, detail, compare)', () => {
     const evil = '"><script>alert(1)</script>';
     const html = casesView([{ id: evil, conflict_type: evil, pattern_key: evil, tag: evil, resolution: evil, origin_mode: evil }],
-      { id: evil, conflict_type: evil, pattern_key: evil, tag: evil, resolution: evil, transcript_snapshot: evil, event_snapshot: { call: { tool: evil, args: { x: evil } }, order_before: { lines: [] }, events: [{ kind: 'evidence_transcript', t_ms: 1, text: evil }] }, expected_state: null }, null, null)
+      { id: evil, conflict_type: evil, pattern_key: evil, tag: evil, resolution: evil, transcript_snapshot: evil, event_snapshot: { call: { tool: evil, args: { x: evil } }, order_before: { lines: [] }, events: [{ kind: 'evidence_transcript', t_ms: 1, text: evil }] }, expected_state: null }, null, null, 'operator')
       + compareTable([{ case_id: evil, pattern_key: evil, tag: evil, by_version: { v1: { evidence: 'pass', audio: evil } } }], ['v1']);
     expect(html).not.toContain('<script');
     expect(html).toContain('&lt;script&gt;');                                       // present, as text

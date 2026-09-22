@@ -48,18 +48,23 @@ describe('token comparison', () => {
 });
 
 describe('HTTP API: authentication and hygiene', () => {
-  it('healthz is open; every /api route requires the operator token', async () => {
+  it('healthz and read routes are open to guests (no credential); mutating routes refuse a guest with 403, never 401 (D-39)', async () => {
     const s = await server();
     expect((await fetch(`${s.base}/healthz`)).status).toBe(200);
-    for (const [method, path] of [['POST', '/api/sessions'], ['GET', '/api/sessions/x'], ['POST', '/api/sessions/x/end'], ['GET', '/api/live/x']] as const) {
-      expect((await fetch(`${s.base}${path}`, { method })).status, `${method} ${path} without token`).toBe(401);
-      expect((await fetch(`${s.base}${path}`, { method, headers: { 'x-tally-operator': 'wrong-token-wrong-token' } })).status, `${method} ${path} wrong token`).toBe(401);
+    // guest reads: an unknown id is a plain 404, never an auth error
+    for (const [method, path] of [['GET', '/api/sessions/x'], ['GET', '/api/live/x']] as const) {
+      expect((await fetch(`${s.base}${path}`, { method })).status, `${method} ${path} as guest`).toBe(404);
+    }
+    // guest writes: refused, with or without a (wrong) credential
+    for (const [method, path] of [['POST', '/api/sessions'], ['POST', '/api/sessions/x/end']] as const) {
+      expect((await fetch(`${s.base}${path}`, { method })).status, `${method} ${path} without credential`).toBe(403);
+      expect((await fetch(`${s.base}${path}`, { method, headers: { 'x-tally-operator': 'wrong-token-wrong-token' } })).status, `${method} ${path} wrong token`).toBe(403);
     }
   });
 
-  it('a token in the URL is NOT accepted (it would leak into logs)', async () => {
+  it('a token in the URL is NOT accepted for a mutating route (it would leak into logs)', async () => {
     const s = await server();
-    expect((await fetch(`${s.base}/api/sessions/x?token=${TOKEN}`)).status).toBe(401);
+    expect((await fetch(`${s.base}/api/sessions/x/end?token=${TOKEN}`, { method: 'POST' })).status).toBe(403);
   });
 
   it('start, inspect and end a session; responses never contain the operator token or the AssemblyAI key', async () => {
@@ -195,7 +200,7 @@ describe('startup safety: refuses to run unsafely', () => {
     const srv = await startServer({ ...ok, PORT: '0', TALLY_DB_PATH: join(dir, 't.sqlite'), TALLY_AUDIO_DIR: join(dir, 'audio') } as NodeJS.ProcessEnv);
     const port = (srv.app.server.address() as any).port;
     expect((await fetch(`http://127.0.0.1:${port}/healthz`)).status).toBe(200);
-    expect((await fetch(`http://127.0.0.1:${port}/api/sessions`, { method: 'POST' })).status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${port}/api/sessions`, { method: 'POST' })).status).toBe(403);
     await srv.close();
   });
 });

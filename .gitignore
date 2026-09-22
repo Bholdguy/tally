@@ -7,3 +7,4 @@ dashboard/dist/
 *.sqlite*
 fixtures/audio/*.pcm
 fixtures/audio/*.wav
+smoke-output.txt

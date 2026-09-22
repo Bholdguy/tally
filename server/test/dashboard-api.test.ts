@@ -53,10 +53,11 @@ describe('static dashboard', () => {
     expect((await app.inject({ url: '/' })).json()).toMatchObject({ hint: expect.stringContaining('build:dashboard') });
     await app.close();
   });
-  it('the API is still token-protected (static files are the only open routes)', async () => {
+  it('these read routes, and triggering a demo scenario, are open to a guest (no token, D-39); an unknown id is a plain 404', async () => {
     const w = await world();
-    for (const p of ['/api/metrics', '/api/sessions', '/api/sessions/x/events', '/api/cases/x/audio', '/api/demo/scenarios']) expect((await fetch(w.base + p)).status, p).toBe(401);
-    expect((await fetch(`${w.base}/api/demo/dropout`, { method: 'POST' })).status).toBe(401);
+    for (const p of ['/api/metrics', '/api/sessions', '/api/demo/scenarios']) expect((await fetch(w.base + p)).status, p).toBe(200);
+    for (const p of ['/api/sessions/x/events', '/api/cases/x/audio']) expect((await fetch(w.base + p)).status, p).toBe(404);
+    expect((await fetch(`${w.base}/api/demo/dropout`, { method: 'POST' })).status).toBe(202); // a guest CAN trigger a demo scenario playback
   });
 });
 

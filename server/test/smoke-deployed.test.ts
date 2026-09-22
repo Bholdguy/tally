@@ -58,7 +58,8 @@ describe('smoke test against BROKEN deployments fails, and says which check', ()
     const { url } = await healthy();
     const r = await runSmoke(url, `${TOKEN}-wrong`, { dry: true });
     expect(r.ok).toBe(false);
-    expect(failing(r).join(' | ')).toMatch(/authenticated|active config|metrics|sessions endpoint|demo banner/i);
+    // reads are guest-open now (D-39), so a wrong token no longer fails them; login (the operator-only path) still does
+    expect(failing(r).join(' | ')).toMatch(/login/i);
   }, 60000);
 
   it('a deployment that refuses the page\'s own origin on the mic socket (the original defect), serves a bundle containing the token, and leaves the API open', async () => {
@@ -80,7 +81,7 @@ describe('smoke test against BROKEN deployments fails, and says which check', ()
     expect(r.ok).toBe(false);
     expect(f).toContain('mic socket accepts the page\'s OWN origin');
     expect(f).toContain('served script contains no operator token');
-    expect(f).toContain('API is closed without the token');
+    expect(f).toContain('a mutating route refuses a guest (403)');
     expect(f).toContain('leak no path or stack');
   }, 60000);
 

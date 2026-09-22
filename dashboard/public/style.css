@@ -16,6 +16,9 @@ button.link { background: none; border: none; color: var(--speech); text-decorat
 input { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
 .counters { display: flex; gap: 8px; margin-left: auto; } .cnt { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
 .banner { flex-basis: 100%; background: var(--wait-bg); color: var(--wait); border-radius: 6px; padding: 4px 10px; font-size: 12px; }
+.tier-banner { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 16px; border-bottom: 1px solid var(--line); }
+.tier-banner.guest { background: var(--wait-bg); } .tier-banner.operator { background: var(--ok-bg); }
+.controls.inline { margin: 0; gap: 6px; }
 main { padding: 12px 16px; display: grid; gap: 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; } .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }

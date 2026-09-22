@@ -220,6 +220,8 @@ export class SessionRuntime {
 
   /** true once end() has completed; `endedAt` is the wall-clock ms of that moment (used to evict finished sessions from memory) */
   get ended(): boolean { return this.summary !== undefined; }
+  /** 'live' | 'demo' | 'replay' (D-39: guest tier may read a 'demo' session's events/audio, never a 'live' one) */
+  get mode(): 'live' | 'demo' | 'replay' { return this.o.mode ?? 'live'; }
   endedAt: number | undefined;
 
   async end(): Promise<EndSummary> {

@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { computeMetrics, runAdversarial, type Store } from '@tally/reliability';
 import type { AppOptions } from './app.js';
 import { runAll, runScenario, SCENARIOS, SCENARIO_LABELS, DEMO_BANNER, type ScenarioName, type ScenarioResult } from './demo/scenarios.js';
@@ -27,9 +27,9 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'cache-control': 'no-store',
 };
 
-interface DemoRun { scenario: string; status: 'running' | 'done' | 'error'; steps: string[]; sessions: string[]; results?: ScenarioResult[]; error?: string; banner: string }
+interface DemoRun { scenario: string; status: 'running' | 'done' | 'error'; steps: string[]; sessions: string[]; results?: ScenarioResult[]; error?: string; banner: string; createdAt: number }
 
-export function registerExtraRoutes(app: FastifyInstance, o: AppOptions, runtimes: Map<string, SessionRuntime>): void {
+export function registerExtraRoutes(app: FastifyInstance, o: AppOptions, runtimes: Map<string, SessionRuntime>, amOperator: (req: FastifyRequest) => boolean): void {
   const store: Store | undefined = o.cases;
 
   // ---- static dashboard (no auth: the files contain no secrets; the API they call does)
@@ -53,31 +53,51 @@ export function registerExtraRoutes(app: FastifyInstance, o: AppOptions, runtime
   app.get('/api/adversarial', async () => runAdversarial());
 
   // ---- stored sessions (Step 11): the Live view for a call that already happened
-  app.get('/api/sessions', async () => ({ sessions: store?.listSessions() ?? [], active: [...runtimes].filter(([, rt]) => !rt.ended).map(([id]) => id) }));
+  // D-39: a guest sees only DEMO sessions (synthetic, already reviewed, Step 13) and which of those are active; a LIVE call's
+  // existence, transcripts and events are operator-only, exactly like the case that a hold on it would produce.
+  app.get('/api/sessions', async (req) => {
+    const operator = amOperator(req);
+    const sessions = (store?.listSessions() ?? []).filter((s) => operator || s.mode === 'demo');
+    const active = [...runtimes].filter(([, rt]) => !rt.ended && (operator || rt.mode === 'demo')).map(([id]) => id);
+    return { sessions, active };
+  });
   app.get('/api/sessions/:id/events', async (req, reply) => {
     const id = (req.params as { id: string }).id;
-    if (!store || !store.listSessions().some((s) => s.id === id)) return reply.code(404).send({ error: 'not_found' });
-    return { session_id: id, events: store.sessionEvents(id), order: store.getOrder(id)?.state ?? null };
+    const s = store?.listSessions().find((x) => x.id === id);
+    if (!s || (s.mode !== 'demo' && !amOperator(req))) return reply.code(404).send({ error: 'not_found' });
+    return { session_id: id, events: store!.sessionEvents(id), order: store!.getOrder(id)?.state ?? null };
   });
 
   // ---- the case's recording, for an <audio> element (fetched with the token, played from a blob: URL)
   app.get('/api/cases/:id/audio', async (req, reply) => {
     const c = store?.getCase((req.params as { id: string }).id);
-    if (!c || !existsSync(c.audio_pointer)) return reply.code(404).send({ error: 'not_found' });
+    if (!c || (c.origin_mode !== 'demo' && !amOperator(req)) || !existsSync(c.audio_pointer)) return reply.code(404).send({ error: 'not_found' });
     reply.header('content-type', 'audio/wav');
     return reply.send(pcmToWav(new Uint8Array(readFileSync(c.audio_pointer))));
   });
 
   // ---- deterministic demo (Step 15): scripted agent + prerecorded audio through the real pipeline
+  // Guest-triggerable (D-39) on purpose, so it needs its OWN abuse guards, not just the operator gate: the scenario name is bounded
+  // to the six defined names (or the `all` alias, which just chains them — not a seventh surface); a cooldown between ACCEPTED starts
+  // guards against a client hammering the route between runs (the "one run at a time" 409 below only rules out genuine overlap); and
+  // finished run records are pruned so this Map cannot grow without bound on a long-lived deployment.
   const runs = new Map<string, DemoRun>();
+  let lastAcceptedAt = 0;
+  const DEMO_RUN_RETENTION_MS = 30 * 60 * 1000;
+  const pruneRuns = () => { const cutoff = Date.now() - DEMO_RUN_RETENTION_MS; for (const [id, r] of runs) if (r.status !== 'running' && r.createdAt < cutoff) runs.delete(id); };
   app.get('/api/demo/scenarios', async () => ({ scenarios: SCENARIOS.map((s) => ({ name: s, label: SCENARIO_LABELS[s] })), banner: DEMO_BANNER }));
   app.post('/api/demo/:scenario', async (req, reply) => {
     if (!store || !o.demo) return reply.code(404).send({ error: 'demo_not_enabled' });
     const name = (req.params as { scenario: string }).scenario;
     if (name !== 'all' && !(SCENARIOS as readonly string[]).includes(name)) return reply.code(400).send({ error: 'unknown_scenario' });
+    pruneRuns();
     if ([...runs.values()].some((r) => r.status === 'running')) return reply.code(409).send({ error: 'demo_already_running' });
-    const id = `demo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-    const run: DemoRun = { scenario: name, status: 'running', steps: [], sessions: [], banner: DEMO_BANNER };
+    const now = Date.now();
+    const minIntervalMs = o.demoMinIntervalMs ?? 3000;
+    if (now - lastAcceptedAt < minIntervalMs) return reply.code(429).send({ error: 'demo_rate_limited', retry_after_ms: minIntervalMs - (now - lastAcceptedAt) });
+    lastAcceptedAt = now;
+    const id = `demo_${now.toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    const run: DemoRun = { scenario: name, status: 'running', steps: [], sessions: [], banner: DEMO_BANNER, createdAt: now };
     runs.set(id, run);
     const opts = {
       store, audioDir: o.demo.audioDir, runtime: o.demo.runtime(),

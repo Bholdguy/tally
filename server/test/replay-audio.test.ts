@@ -133,9 +133,9 @@ describe('replay API', () => {
     return { w, c, base, H: { 'x-tally-operator': TOKEN } };
   }
 
-  it('token required; unknown tier / case handled', async () => {
+  it('operator credential required (403 for a guest, D-39); unknown tier / case handled', async () => {
     const { c, base, H } = await api();
-    expect((await fetch(`${base}/api/cases/${c.id}/replay?tier=evidence`, { method: 'POST' })).status).toBe(401);
+    expect((await fetch(`${base}/api/cases/${c.id}/replay?tier=evidence`, { method: 'POST' })).status).toBe(403);
     expect((await fetch(`${base}/api/cases/${c.id}/replay?tier=nope`, { method: 'POST', headers: H })).status).toBe(400);
     expect((await fetch(`${base}/api/cases/nope/replay?tier=evidence`, { method: 'POST', headers: H })).status).toBe(404);
     expect((await fetch(`${base}/api/cases/nope/replays`, { headers: H })).status).toBe(404);

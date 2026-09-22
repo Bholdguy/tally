@@ -10,12 +10,14 @@ export interface Deps {
   api: Api;
   mic?: Mic;
   now?: () => number;
+  /** the raw operator token, held only for the mic WS's first-frame auth (D-39: the SAME credential as `/api/login`, no second secret) */
   token: { get(): string; set(t: string): void; clear(): void };
   /** background refresh period in ms (0 disables; tests drive refresh explicitly) */
   pollMs?: number;
 }
 export interface UiState {
-  authed: boolean; tab: 'live' | 'cases' | 'lab' | 'metrics'; live: LiveState; counts: any | null; metrics: any | null;
+  /** D-39: guest (no login) is the default and needs nothing; operator comes from a session-cookie login and unlocks mutating actions */
+  role: 'guest' | 'operator'; tab: 'live' | 'cases' | 'lab' | 'metrics'; live: LiveState; counts: any | null; metrics: any | null;
   scenarios: { name: string; label: string }[]; demoBanner: string | null; busy: string | null; sessions: any[]; mic: boolean;
   cases: any[]; caseDetail: any | null; replays: any | null; compare: any[]; configs: any[]; suite: any | null; adversarial: any | null; error: string | null;
 }
@@ -28,30 +30,26 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
   const now = deps.now ?? (() => Date.now());
   const mic = deps.mic;
   const ui: UiState = {
-    authed: false, tab: 'live', live: initialLive(), counts: null, metrics: null, scenarios: [], demoBanner: null, busy: null, sessions: [], mic: false,
+    role: 'guest', tab: 'live', live: initialLive(), counts: null, metrics: null, scenarios: [], demoBanner: null, busy: null, sessions: [], mic: false,
     cases: [], caseDetail: null, replays: null, compare: [], configs: [], suite: null, adversarial: null, error: null,
   };
   let stream: AbortController | null = null; let timer: ReturnType<typeof setInterval> | null = null; let tick: ReturnType<typeof setInterval> | null = null;
   let scheduled = false; let dead = false; let pending: Promise<unknown>[] = [];
 
   const track = <T,>(p: Promise<T>): Promise<T> => { pending.push(p); void p.finally(() => { pending = pending.filter((x) => x !== p); }).catch(() => undefined); return p; };
-  const fail = (e: unknown) => { ui.error = e instanceof Error ? e.message : String(e); if (e && (e as { status?: number }).status === 401) { ui.authed = false; deps.token.clear(); } render(); };
+  // a 401 is an invalid/expired credential (demote to guest); a 403 is a guest correctly refused a mutating route (nothing to demote)
+  const fail = (e: unknown) => { ui.error = e instanceof Error ? e.message : String(e); if (e && (e as { status?: number }).status === 401) { ui.role = 'guest'; deps.token.clear(); } render(); };
 
-  // ---------- rendering (string views; everything escaped inside the views)
-  function loginView(): string {
-    return `<section id="login" class="panel"><h2>Operator sign-in</h2><p class="muted">Enter the operator token from your server's <code>.env</code>. It is kept in this tab only and sent as a header; it is never put in a URL.</p>
-<form data-form="login" class="controls"><input name="token" type="password" autocomplete="off" placeholder="operator token" required/><button type="submit">Sign in</button></form>${ui.error ? `<p class="err">${esc(ui.error)}</p>` : ''}</section>`;
-  }
+  // ---------- rendering (string views; everything escaped inside the views; guest never sees the Lab tab or a mutating button)
   function body(): string {
-    if (ui.tab === 'cases') return casesView(ui.cases, ui.caseDetail, ui.replays, ui.busy);
+    if (ui.tab === 'cases') return casesView(ui.cases, ui.caseDetail, ui.replays, ui.busy, ui.role);
     if (ui.tab === 'lab') return labView({ compare: ui.compare, configs: ui.configs, suite: ui.suite, notice: ui.suite?.validation_notice ?? FALLBACK_NOTICE, busy: ui.busy, adversarial: ui.adversarial });
     if (ui.tab === 'metrics') return metricsView(ui.metrics);
-    return liveView(ui.live, { now: now(), scenarios: ui.scenarios, mic: ui.mic, busy: ui.busy, sessions: ui.sessions });
+    return liveView(ui.live, { now: now(), scenarios: ui.scenarios, mic: ui.mic, busy: ui.busy, sessions: ui.sessions, role: ui.role });
   }
   function render(): void {
     if (dead) return;
-    if (!ui.authed) { root.innerHTML = `<div id="hdr"></div><main id="main">${loginView()}</main>`; return; }
-    root.innerHTML = `<div id="hdr">${header({ tab: ui.tab, counts: ui.counts, metrics: ui.metrics, demoBanner: ui.demoBanner })}</div>${ui.error ? `<div class="err" role="alert">${esc(ui.error)} <button data-action="dismiss">dismiss</button></div>` : ''}<main id="main">${body()}</main>`;
+    root.innerHTML = `<div id="hdr">${header({ tab: ui.tab, counts: ui.counts, metrics: ui.metrics, demoBanner: ui.demoBanner, role: ui.role })}</div>${ui.error ? `<div class="err" role="alert">${esc(ui.error)} <button data-action="dismiss">dismiss</button></div>` : ''}<main id="main">${body()}</main>`;
   }
   function schedule(): void { if (scheduled) return; scheduled = true; queueMicrotask(() => { scheduled = false; render(); }); }
 
@@ -61,7 +59,7 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
       const [counts, metrics, sessions] = await Promise.all([api.get('/api/regressions/count'), api.get('/api/metrics'), api.get('/api/sessions')]);
       ui.counts = counts; ui.metrics = metrics; ui.sessions = sessions.sessions ?? [];
       if (ui.tab === 'cases') ui.cases = (await api.get('/api/cases')).cases;
-      if (ui.tab === 'lab') await loadLab();
+      if (ui.tab === 'lab' && ui.role === 'operator') await loadLab();
       render();
     } catch (e) { fail(e); }
   }
@@ -69,13 +67,18 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
     const [cfg, cmp] = await Promise.all([api.get('/api/configs'), api.get('/api/compare')]);
     ui.configs = cfg.configs; ui.compare = cmp.table;
   }
+  /** guest-visible from the moment the page loads: no login required. A pre-existing session cookie (page reload) is picked up here too. */
   async function bootstrap(): Promise<void> {
     try {
+      const who = await api.get('/api/whoami');
+      ui.role = who.role === 'operator' ? 'operator' : 'guest';
+    } catch { ui.role = 'guest'; }
+    try {
       const sc = await api.get('/api/demo/scenarios');
-      ui.authed = true; ui.error = null; ui.scenarios = sc.scenarios; ui.demoBanner = sc.banner;
+      ui.scenarios = sc.scenarios; ui.demoBanner = sc.banner;
       await refresh();
       if (deps.pollMs) timer = setInterval(() => { void refresh(); }, deps.pollMs);
-    } catch (e) { ui.authed = false; if ((e as { status?: number }).status === 401) deps.token.clear(); else ui.error = e instanceof Error ? e.message : String(e); render(); }
+    } catch (e) { ui.error = e instanceof Error ? e.message : String(e); render(); }
   }
 
   async function attach(id: string): Promise<void> {
@@ -98,7 +101,7 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
     await sleep(0);
     startTick();
   }
-  async function refreshCounts(): Promise<void> { try { [ui.counts, ui.metrics] = await Promise.all([api.get('/api/regressions/count'), api.get('/api/metrics')]); const h = root.querySelector('#hdr'); if (h) h.innerHTML = header({ tab: ui.tab, counts: ui.counts, metrics: ui.metrics, demoBanner: ui.demoBanner }); } catch { /* the next refresh will retry */ } }
+  async function refreshCounts(): Promise<void> { try { [ui.counts, ui.metrics] = await Promise.all([api.get('/api/regressions/count'), api.get('/api/metrics')]); const h = root.querySelector('#hdr'); if (h) h.innerHTML = header({ tab: ui.tab, counts: ui.counts, metrics: ui.metrics, demoBanner: ui.demoBanner, role: ui.role }); } catch { /* the next refresh will retry */ } }
   function startTick(): void { if (tick || !deps.pollMs) return; tick = setInterval(() => { if (ui.live.waiting && ui.tab === 'live') schedule(); }, 250); }
 
   async function busy<T>(msg: string, f: () => Promise<T>): Promise<T | undefined> {
@@ -162,6 +165,11 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
     },
     rollback: async () => { await busy('rolling back…', async () => { await api.post('/api/configs/rollback'); await loadLab(); }); },
     adversarial: async () => { await busy('running the adversarial harness…', async () => { ui.adversarial = await api.get('/api/adversarial'); }); },
+    logout: async () => {
+      await busy('signing out…', async () => { await api.post('/api/logout'); });
+      deps.token.clear(); ui.role = 'guest'; if (ui.tab === 'lab') ui.tab = 'live';
+      await refresh();
+    },
   };
 
   const onClick = (ev: Event) => {
@@ -174,7 +182,16 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
     const form = ev.target as HTMLFormElement; const kind = form?.dataset?.form; if (!kind) return;
     ev.preventDefault();
     const fd = new FormData(form);
-    if (kind === 'login') { deps.token.set(String(fd.get('token') ?? '')); void track(bootstrap()); return; }
+    if (kind === 'login') {
+      const tok = String(fd.get('token') ?? '');
+      void track(busy('signing in…', async () => {
+        await api.post('/api/login', { token: tok });          // sets the session cookie; the SAME credential, no second secret
+        deps.token.set(tok);                                    // kept only for the mic WS's first-frame auth
+        ui.role = 'operator'; ui.error = null;
+        await refresh();
+      }));
+      return;
+    }
     if (kind === 'config') {
       void track(busy('creating version…', async () => {
         const params: Record<string, number> = {};
@@ -189,7 +206,8 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
   root.addEventListener('click', onClick);
   root.addEventListener('submit', onSubmit);
 
-  if (deps.token.get()) void track(bootstrap()); else render();
+  render(); // the guest shell renders immediately; bootstrap() fills it in (and may upgrade role to operator from an existing session cookie)
+  void track(bootstrap());
   return {
     destroy: () => { dead = true; stream?.abort(); if (timer) clearInterval(timer); if (tick) clearInterval(tick); root.removeEventListener('click', onClick); root.removeEventListener('submit', onSubmit); },
     state: () => ui,

@@ -64,22 +64,33 @@ export function metricsStrip(m: any | null): string {
 <span class="muted small">latency is client-observed; every number is computed from stored rows</span></div>`;
 }
 
-export function header(ui: { tab: string; counts: any | null; metrics: any | null; demoBanner: string | null }): string {
-  const c = ui.counts;
-  const m = ui.metrics?.rates?.final_order_accuracy;
-  const tabs = ['live', 'cases', 'lab', 'metrics'].map((t) => `<button class="tab ${ui.tab === t ? 'on' : ''}" data-action="tab" data-arg="${t}" aria-pressed="${ui.tab === t}">${esc(t[0]!.toUpperCase() + t.slice(1))}</button>`).join('');
-  return `<header><h1>Tally <span class="muted">reliability layer</span></h1><nav>${tabs}</nav>
-<div class="counters"><span class="cnt" id="cnt-cases">Cases <b>${esc(c?.cases ?? 0)}</b></span><span class="cnt" id="cnt-cand">Candidates <b>${esc(c?.candidates ?? 0)}</b></span><span class="cnt" id="cnt-reg">Regressions <b>${esc(c?.regressions ?? 0)}</b></span><span class="cnt" id="cnt-acc">Accuracy <b>${m ? `${esc(m.n)}/${esc(m.of)}` : 'n/a'}</b></span></div>
-${ui.demoBanner ? `<div class="banner">${esc(ui.demoBanner)}</div>` : ''}</header>`;
+/** the persistent guest/operator label (D-39): always on screen, never only a hidden/shown button, so a judge always knows which tier they're in */
+export function tierBanner(role: 'guest' | 'operator'): string {
+  return role === 'operator'
+    ? `<div class="tier-banner operator" id="tier-banner"><span class="badge ok"><span class="dot"></span>Operator view (logged in)</span><span class="muted small">replay, accept, promote, rollback and config changes are unlocked</span><button data-action="logout" class="link">Log out</button></div>`
+    : `<div class="tier-banner guest" id="tier-banner"><span class="badge wait"><span class="dot"></span>Guest view</span><span class="muted small">read-only, plus demo playback — sign in to replay, accept regressions, promote or roll back</span><form data-form="login" class="controls inline"><input name="token" type="password" autocomplete="off" placeholder="operator token" required/><button type="submit">Operator sign-in</button></form></div>`;
 }
 
-export function liveView(s: LiveState, ui: { now: number; scenarios: { name: string; label: string }[]; mic: boolean; busy: string | null; sessions: any[] }): string {
+export function header(ui: { tab: string; counts: any | null; metrics: any | null; demoBanner: string | null; role: 'guest' | 'operator' }): string {
+  const c = ui.counts;
+  const m = ui.metrics?.rates?.final_order_accuracy;
+  const tabNames = ui.role === 'operator' ? ['live', 'cases', 'lab', 'metrics'] : ['live', 'cases', 'metrics'];
+  const tabs = tabNames.map((t) => `<button class="tab ${ui.tab === t ? 'on' : ''}" data-action="tab" data-arg="${t}" aria-pressed="${ui.tab === t}">${esc(t[0]!.toUpperCase() + t.slice(1))}</button>`).join('');
+  return `<header><h1>Tally <span class="muted">reliability layer</span></h1><nav>${tabs}</nav>
+<div class="counters"><span class="cnt" id="cnt-cases">Cases <b>${esc(c?.cases ?? 0)}</b></span><span class="cnt" id="cnt-cand">Candidates <b>${esc(c?.candidates ?? 0)}</b></span><span class="cnt" id="cnt-reg">Regressions <b>${esc(c?.regressions ?? 0)}</b></span><span class="cnt" id="cnt-acc">Accuracy <b>${m ? `${esc(m.n)}/${esc(m.of)}` : 'n/a'}</b></span></div>
+${ui.demoBanner ? `<div class="banner">${esc(ui.demoBanner)}</div>` : ''}</header>${tierBanner(ui.role)}`;
+}
+
+export function liveView(s: LiveState, ui: { now: number; scenarios: { name: string; label: string }[]; mic: boolean; busy: string | null; sessions: any[]; role: 'guest' | 'operator' }): string {
   const live = !!s.session_id && !s.ended;
   const scen = ui.scenarios.map((x) => `<button data-action="demo" data-arg="${idAttr(x.name)}" ${ui.busy ? 'disabled' : ''}>${esc(x.label)}</button>`).join('');
   const past = ui.sessions.slice(0, 8).map((x) => `<button class="link" data-action="attach" data-arg="${idAttr(x.id)}">${esc(x.mode)} · ${esc(new Date(x.started_at).toLocaleTimeString())}${x.ended_at ? '' : ' · live'}</button>`).join(' ');
+  const opControls = ui.role === 'operator'
+    ? `<div class="controls"><button data-action="start" ${live || ui.busy ? 'disabled' : ''}>Start live call</button><button data-action="end" ${live ? '' : 'disabled'}>End call</button>
+<button data-action="mic" ${live ? '' : 'disabled'} aria-pressed="${ui.mic}">${ui.mic ? '🎙 Mic on: stop' : '🎙 Use microphone'}</button>${ui.busy ? `<span class="muted">${esc(ui.busy)}</span>` : ''}</div>`
+    : `<p class="muted small">Guest view: starting a real call and the microphone need operator sign-in. The scenarios below run the same real pipeline against prerecorded audio.</p>`;
   return `<section id="live">
-<div class="controls"><button data-action="start" ${live || ui.busy ? 'disabled' : ''}>Start live call</button><button data-action="end" ${live ? '' : 'disabled'}>End call</button>
-<button data-action="mic" ${live ? '' : 'disabled'} aria-pressed="${ui.mic}">${ui.mic ? '🎙 Mic on: stop' : '🎙 Use microphone'}</button>${ui.busy ? `<span class="muted">${esc(ui.busy)}</span>` : ''}</div>
+${opControls}
 <div class="controls"><span class="muted">Deterministic demo (scripted agent, prerecorded audio):</span>${scen}</div>
 ${past ? `<div class="controls"><span class="muted">Sessions:</span>${past}</div>` : ''}
 ${waitingChip(s, ui.now)}
@@ -91,12 +102,12 @@ ${transcripts(s)}<div class="two-col">${callLog(s)}${orderPanel(s.order)}</div><
 const callRows = (s: LiveState) => s.calls.map((c) => `<tr><td>${esc(toolName(c.tool))}</td><td>${badge(c.status, statusLabel(c))}</td><td>${esc(typeof c.waited_ms === 'number' ? ms(c.waited_ms) : '')}</td></tr>`).join('');
 export const callTable = (s: LiveState) => `<table class="t"><thead><tr><th>Call</th><th>Verdict</th><th>Waited</th></tr></thead><tbody>${callRows(s)}</tbody></table>`;
 
-export function casesView(list: any[], detail: any | null, replays: any | null, busy: string | null): string {
+export function casesView(list: any[], detail: any | null, replays: any | null, busy: string | null, role: 'guest' | 'operator'): string {
   const rows = list.map((c) => `<tr class="${detail?.id === c.id ? 'sel' : ''}"><td><button class="link" data-action="case" data-arg="${idAttr(c.id)}">${esc(String(c.id).slice(-8))}</button></td><td>${codeChip(c.conflict_type)}</td><td class="mono" title="${esc(c.pattern_key)}">${esc(describePattern(c.pattern_key))}</td><td><span class="badge ${c.tag === 'regression' ? 'ok' : c.tag === 'regression_candidate' ? 'wait' : 'muted'}">${esc(c.tag)}</span></td><td>${esc(c.resolution)}</td><td>${esc(c.origin_mode)}</td></tr>`).join('');
-  return `<section id="cases"><div class="panel"><h3>Cases <span class="muted">(every hold is a stored, replayable case)</span></h3><table class="t"><thead><tr><th>Case</th><th>Conflict</th><th>Pattern</th><th>Tag</th><th>Resolution</th><th>Origin</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="muted">no cases yet</td></tr>'}</tbody></table></div>${detail ? caseDetail(detail, replays, busy) : ''}</section>`;
+  return `<section id="cases"><div class="panel"><h3>Cases <span class="muted">(every hold is a stored, replayable case)</span></h3><table class="t"><thead><tr><th>Case</th><th>Conflict</th><th>Pattern</th><th>Tag</th><th>Resolution</th><th>Origin</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="muted">no cases yet</td></tr>'}</tbody></table></div>${detail ? caseDetail(detail, replays, busy, role) : ''}</section>`;
 }
 
-function caseDetail(c: any, replays: any | null, busy: string | null): string {
+function caseDetail(c: any, replays: any | null, busy: string | null, role: 'guest' | 'operator'): string {
   const snap = c.event_snapshot ?? {};
   const before = (snap.order_before?.lines ?? []).map((l: any) => esc(describeLine(l))).join(', ') || 'empty';
   const exp = c.expected_state ? c.expected_state.state.lines.map((l: any) => esc(describeLine(l))).join(', ') || 'empty' : null;
@@ -104,12 +115,15 @@ function caseDetail(c: any, replays: any | null, busy: string | null): string {
   const call = snap.call ? `${esc(toolName(snap.call.tool))} ${esc(JSON.stringify(snap.call.args ?? {}))}` : '';
   const suites = (replays?.audio_suites ?? []).map((a: any) => `<li>audio tier: <b>${esc(a.label)}</b> <span class="muted">(${esc(a.k)} live runs; never "deterministic")</span></li>`).join('');
   const last = replays?.runs?.filter((r: any) => r.tier === 'evidence').slice(-1)[0];
+  const opControls = role === 'operator'
+    ? `<div class="controls"><button data-action="replay-evidence" data-arg="${idAttr(c.id)}" ${busy ? 'disabled' : ''}>Replay: evidence tier (deterministic)</button><button data-action="replay-audio" data-arg="${idAttr(c.id)}" ${busy || !c.expected_state ? 'disabled' : ''} title="${c.expected_state ? '' : 'needs a resolved case'}">Replay: audio tier (k=3, live agent)</button>${c.tag === 'regression_candidate' && c.resolution === 'resolved' ? `<button data-action="accept" data-arg="${idAttr(c.id)}">Accept as regression (operator)</button>` : ''}${busy ? `<span class="muted">${esc(busy)}</span>` : ''}</div>`
+    : `<p class="muted small">Guest view: replaying this case or accepting it as a regression needs operator sign-in.</p>`;
   return `<div class="panel" id="case-detail"><h3>Case ${esc(String(c.id).slice(-8))} ${codeChip(c.conflict_type)}</h3>
 <p><span class="badge ${c.resolution === 'resolved' ? 'ok' : 'wait'}">${esc(c.resolution)}</span> <span class="badge ${c.tag === 'regression' ? 'ok' : 'wait'}">${esc(c.tag)}</span> <span class="mono" title="${esc(c.pattern_key)}">${esc(describePattern(c.pattern_key))}</span></p>
 <p>Recorded call: <span class="mono">${call}</span> — order before: ${before}${exp ? ` — expected after repair: <b>${exp}</b>` : ' — no expected state (not resolved)'}</p>
 <div class="two"><div class="col"><h4>Customer audio</h4><button data-action="audio" data-arg="${idAttr(c.id)}">Load recording</button><div id="audio-slot"></div><h4>Transcript snapshot</h4><pre>${esc(c.transcript_snapshot)}</pre></div>
 <div class="col"><h4>Stored evidence (independent stream and the call)</h4><ul>${evs}</ul></div></div>
-<div class="controls"><button data-action="replay-evidence" data-arg="${idAttr(c.id)}" ${busy ? 'disabled' : ''}>Replay: evidence tier (deterministic)</button><button data-action="replay-audio" data-arg="${idAttr(c.id)}" ${busy || !c.expected_state ? 'disabled' : ''} title="${c.expected_state ? '' : 'needs a resolved case'}">Replay: audio tier (k=3, live agent)</button>${c.tag === 'regression_candidate' && c.resolution === 'resolved' ? `<button data-action="accept" data-arg="${idAttr(c.id)}">Accept as regression (operator)</button>` : ''}${busy ? `<span class="muted">${esc(busy)}</span>` : ''}</div>
+${opControls}
 ${last ? diffViewer(last) : ''}<ul>${suites}</ul></div>`;
 }
 

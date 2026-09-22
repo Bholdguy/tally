@@ -92,10 +92,26 @@ export async function runSmoke(baseUrl: string, token: string, o: SmokeOptions =
     check('served script contains no operator token, no API key, no vendor host', !body.includes(token) && !(secret && secret.length >= 8 && body.includes(secret)) && !/assemblyai\.com/i.test(body));
   });
 
-  // 2. the API is closed without the token and open with it; errors are uniform and leak nothing
-  await guard('API is closed without the token', async () => {
-    const a = await get('/api/metrics', false); const b = await fetch(`${base}/api/metrics`, { headers: { 'x-tally-operator': `${token}x` } });
-    check('API is closed without the token (and with a wrong one)', a.status === 401 && b.status === 401, `no token ${a.status}, wrong token ${b.status}`);
+  // 2. two access tiers (D-39): reads and the demo trigger are open to a guest (no token); mutating routes need the operator
+  // token or a session cookie, and refuse a guest with 403. Errors are uniform and leak nothing.
+  await guard('guest reads are open, mutating routes are closed without the token', async () => {
+    const read = await get('/api/metrics', false);
+    const a = await fetch(`${base}/api/configs`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const b = await fetch(`${base}/api/configs`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tally-operator': `${token}x` }, body: '{}' });
+    check('a guest can read the API with no credential', read.status === 200, `HTTP ${read.status}`);
+    check('a mutating route refuses a guest (403), with or without a wrong token', a.status === 403 && b.status === 403, `no token ${a.status}, wrong token ${b.status}`);
+  });
+  await guard('operator login sets a session cookie that unlocks mutating routes; logout revokes it', async () => {
+    const bad = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: `${token}x` }) });
+    const good = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
+    const cookie = (good.headers.get('set-cookie') ?? '').split(';')[0];
+    check('login: wrong token 401, correct token 200 with a session cookie (never the token itself)', bad.status === 401 && good.status === 200 && !!cookie && !cookie.includes(token), `wrong ${bad.status}, correct ${good.status}`);
+    if (cookie) {
+      const viaCookie = await fetch(`${base}/api/whoami`, { headers: { cookie } });
+      const out = await fetch(`${base}/api/logout`, { method: 'POST', headers: { cookie } });
+      const afterOut = await fetch(`${base}/api/whoami`, { headers: { cookie } });
+      check('the cookie alone reports operator; logout revokes it (guest again)', (await viaCookie.json().catch(() => null))?.role === 'operator' && out.status === 200 && (await afterOut.json().catch(() => null))?.role === 'guest');
+    }
   });
   await guard('unknown routes and bad input give uniform, non-leaking errors', async () => {
     const r1 = await json('/api/does-not-exist'); const r2 = await fetch(`${base}/api/configs`, { method: 'POST', headers: { ...H, 'content-type': 'application/json' }, body: '{"broken":' });

@@ -32,10 +32,11 @@ async function setup() {
 }
 
 describe('cases API', () => {
-  it('needs the operator token', async () => {
+  it('reads are open to a guest (no token); accepting a regression is operator-only (403 for a guest)', async () => {
     const { base } = await setup();
-    for (const p of ['/api/cases', '/api/regressions/count', '/api/cases/x']) expect((await fetch(base + p)).status).toBe(401);
-    expect((await fetch(`${base}/api/cases/x/accept`, { method: 'POST' })).status).toBe(401);
+    for (const p of ['/api/cases', '/api/regressions/count']) expect((await fetch(base + p)).status).toBe(200);
+    expect((await fetch(`${base}/api/cases/x`)).status).toBe(404);           // a guest read of an unknown case: 404, not an auth error
+    expect((await fetch(`${base}/api/cases/x/accept`, { method: 'POST' })).status).toBe(403);
   });
 
   it('lists cases, counts, and flips the regression counters on the third repeat', async () => {

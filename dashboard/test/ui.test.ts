@@ -19,6 +19,9 @@ function fake(events: Ev[], pauseAt?: string): Fake {
   const f: Fake = {
     calls: [],
     routes: {
+      // most fixtures exercise operator-only actions (replay, accept, promote, mic…), so default to an already-logged-in session;
+      // the sign-in suite below overrides this to exercise the guest tier explicitly
+      'GET /api/whoami': { role: 'operator' },
       'GET /api/demo/scenarios': { scenarios: [{ name: 'A', label: 'A' }, { name: 'B', label: 'B · recover' }], banner: 'DETERMINISTIC DEMO: scripted agent' },
       'GET /api/regressions/count': { cases: 0, candidates: 0, regressions: 0, patterns_flipped: 0 },
       'GET /api/metrics': { stages: Object.fromEntries(['stt', 'gate', 'repair', 'commit', 'first_audio', 'barge_in'].map((k) => [k, { n: 0, p50: null, p95: null, max: null, mean: null }])), rates: { conflict_rate: { value: null, n: 0, of: 0 }, repair_success_rate: { value: null, n: 0, of: 0 }, false_positive_rate: { value: null, n: 0, of: 0, note: '' }, regression_pass_rate: { value: null, n: 0, of: 0 }, final_order_accuracy: { value: null, n: 0, of: 0, note: '' } } },
@@ -57,18 +60,49 @@ const click = (sel: string) => { (root.querySelector(sel) as HTMLElement).click(
 const text = (sel: string) => root.querySelector(sel)?.textContent ?? '';
 const badges = (sel = '#calllog') => [...root.querySelectorAll(`${sel} li.log`)].map((li) => li.textContent!.replace(/^\d+\.\ds /, ''));
 
-describe('sign-in', () => {
-  it('without a token the operator sees only the sign-in form; a 401 sends them back to it and clears the token', async () => {
+describe('guest and operator tiers (D-39)', () => {
+  it('a guest (no login) sees the guest banner and the live/cases/metrics data, but no Lab tab and no mutating buttons', async () => {
     const f = fake([]);
+    f.routes['GET /api/whoami'] = { role: 'guest' };
     const t = token(); t.clear();
     const app = mount(f, { token: t });
-    expect(root.querySelector('#login')).not.toBeNull();
-    expect(root.querySelector('[data-action="start"]')).toBeNull();
-    f.routes['GET /api/demo/scenarios'] = new ApiError(401, { error: 'unauthorized' });
-    (root.querySelector('input[name=token]') as HTMLInputElement).value = 'wrong';
-    root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
     await app.flush();
-    expect(root.querySelector('#login')).not.toBeNull();
+    expect(root.querySelector('#tier-banner')?.className).toContain('guest');
+    expect(text('#tier-banner')).toContain('Guest view');
+    expect(root.querySelector('[data-form="login"]')).not.toBeNull();           // the sign-in form is IN the banner, not a full-page gate
+    expect(root.querySelector('[data-action="start"]')).toBeNull();             // starting a real call needs operator sign-in
+    expect(root.querySelector('[data-action="mic"]')).toBeNull();
+    expect(root.querySelector('[data-action="tab"][data-arg="lab"]')).toBeNull(); // no Lab tab for a guest
+    expect(root.querySelector('[data-action="demo"]')).not.toBeNull();          // a guest CAN trigger a demo scenario
+    app.destroy();
+  });
+
+  it('signing in posts the token to /api/login (never a header-only flow) and unlocks operator controls; a 401 stays on the guest tier and clears the token', async () => {
+    const f = fake([]);
+    f.routes['GET /api/whoami'] = { role: 'guest' };
+    const t = token(); t.clear();
+    const app = mount(f, { token: t });
+    await app.flush();
+    f.routes['POST /api/login'] = new ApiError(401, { error: 'invalid_token' });
+    (root.querySelector('input[name=token]') as HTMLInputElement).value = 'wrong';
+    root.querySelector('form[data-form="login"]')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    await app.flush();
+    expect(f.calls.some((c) => c.method === 'POST' && c.path === '/api/login' && c.body?.token === 'wrong')).toBe(true);
+    expect(text('#tier-banner')).toContain('Guest view');                       // a bad token never upgrades the tier
+    expect(t.get()).toBe('');
+
+    f.routes['POST /api/login'] = { ok: true, role: 'operator' };
+    (root.querySelector('input[name=token]') as HTMLInputElement).value = 'right';
+    root.querySelector('form[data-form="login"]')!.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    await app.flush();
+    expect(text('#tier-banner')).toContain('Operator view (logged in)');
+    expect(root.querySelector('[data-action="start"]')).not.toBeNull();
+    expect(t.get()).toBe('right');                                             // kept only for the mic WS's first-frame auth
+
+    f.routes['POST /api/logout'] = { ok: true, role: 'guest' };
+    root.querySelector('[data-action="logout"]')!.dispatchEvent(new Event('click', { bubbles: true }));
+    await app.flush();
+    expect(text('#tier-banner')).toContain('Guest view');
     expect(t.get()).toBe('');
     app.destroy();
   });

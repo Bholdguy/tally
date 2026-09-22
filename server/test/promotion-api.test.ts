@@ -41,10 +41,14 @@ async function api(over: Partial<Parameters<typeof buildApp>[0]> = {}) {
 const json = async (res: Response) => (await res.json()) as any;
 
 describe('auth and registry', () => {
-  it('every new route needs the operator token', async () => {
+  it('GET routes are open to a guest (D-39); every mutating route (create/run/promote/rollback) is operator-only, 403 for a guest', async () => {
     const { base } = await api();
-    for (const [m, p] of [['POST', '/api/configs'], ['GET', '/api/configs'], ['GET', '/api/configs/active'], ['GET', '/api/configs/v1'], ['POST', '/api/suite/run'], ['GET', '/api/suite/x'], ['POST', '/api/configs/v1/promote'], ['POST', '/api/configs/rollback'], ['GET', '/api/compare']] as const) {
-      expect((await fetch(base + p, { method: m })).status, `${m} ${p}`).toBe(401);
+    for (const [m, p] of [['GET', '/api/configs'], ['GET', '/api/configs/active'], ['GET', '/api/configs/v1'], ['GET', '/api/suite/x'], ['GET', '/api/compare']] as const) {
+      expect((await fetch(base + p, { method: m })).status, `${m} ${p}`).not.toBe(401);
+      expect((await fetch(base + p, { method: m })).status, `${m} ${p}`).not.toBe(403);
+    }
+    for (const [m, p] of [['POST', '/api/configs'], ['POST', '/api/suite/run'], ['POST', '/api/configs/v1/promote'], ['POST', '/api/configs/rollback']] as const) {
+      expect((await fetch(base + p, { method: m })).status, `${m} ${p}`).toBe(403);
     }
   });
 
