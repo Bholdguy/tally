@@ -20,6 +20,9 @@ export interface UiState {
   role: 'guest' | 'operator'; tab: 'live' | 'cases' | 'lab' | 'metrics'; live: LiveState; counts: any | null; metrics: any | null;
   scenarios: { name: string; label: string }[]; demoBanner: string | null; busy: string | null; sessions: any[]; mic: boolean;
   cases: any[]; caseDetail: any | null; replays: any | null; compare: any[]; configs: any[]; suite: any | null; adversarial: any | null; error: string | null;
+  /** the "Recent sessions" list is collapsed by default; kept in UI state (not a native <details>) because render() rebuilds the whole
+   * DOM on every live event, which would otherwise snap a native disclosure shut mid-call */
+  sessionsOpen: boolean;
 }
 
 export const FALLBACK_NOTICE = 'Validation status: the regression suite is synthetic and captured phrasing only; the real-speech pass and live-agent validation are pending. A pass means no KNOWN failure regressed.';
@@ -31,7 +34,7 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
   const mic = deps.mic;
   const ui: UiState = {
     role: 'guest', tab: 'live', live: initialLive(), counts: null, metrics: null, scenarios: [], demoBanner: null, busy: null, sessions: [], mic: false,
-    cases: [], caseDetail: null, replays: null, compare: [], configs: [], suite: null, adversarial: null, error: null,
+    cases: [], caseDetail: null, replays: null, compare: [], configs: [], suite: null, adversarial: null, error: null, sessionsOpen: false,
   };
   let stream: AbortController | null = null; let timer: ReturnType<typeof setInterval> | null = null; let tick: ReturnType<typeof setInterval> | null = null;
   let scheduled = false; let dead = false; let pending: Promise<unknown>[] = [];
@@ -45,7 +48,7 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
     if (ui.tab === 'cases') return casesView(ui.cases, ui.caseDetail, ui.replays, ui.busy, ui.role);
     if (ui.tab === 'lab') return labView({ compare: ui.compare, configs: ui.configs, suite: ui.suite, notice: ui.suite?.validation_notice ?? FALLBACK_NOTICE, busy: ui.busy, adversarial: ui.adversarial });
     if (ui.tab === 'metrics') return metricsView(ui.metrics);
-    return liveView(ui.live, { now: now(), scenarios: ui.scenarios, mic: ui.mic, busy: ui.busy, sessions: ui.sessions, role: ui.role });
+    return liveView(ui.live, { now: now(), scenarios: ui.scenarios, mic: ui.mic, busy: ui.busy, sessions: ui.sessions, role: ui.role, sessionsOpen: ui.sessionsOpen });
   }
   function render(): void {
     if (dead) return;
@@ -135,6 +138,7 @@ export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; stat
       await refresh();
     },
     attach: async (id) => { await attach(id); },
+    'toggle-sessions': async () => { ui.sessionsOpen = !ui.sessionsOpen; render(); },
     case: async (id) => {
       ui.caseDetail = await api.get(`/api/cases/${encodeURIComponent(id)}`); ui.replays = await api.get(`/api/cases/${encodeURIComponent(id)}/replays`); render();
     },

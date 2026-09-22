@@ -292,6 +292,34 @@ describe('promotion and the compare table', () => {
   });
 });
 
+describe('recent sessions list (D-40)', () => {
+  it('is collapsed by default (only the toggle, no session buttons); clicking it reveals the list; clicking again hides it', async () => {
+    const f = fake([]);
+    f.routes['GET /api/sessions'] = { sessions: [{ id: 's1', mode: 'demo', started_at: 1000, ended_at: 2000 }, { id: 's2', mode: 'live', started_at: 3000, ended_at: null }], active: [] };
+    const app = mount(f); await app.flush();
+    expect(root.querySelector('[data-action="toggle-sessions"]')).not.toBeNull();
+    expect(text('[data-action="toggle-sessions"]')).toContain('▾');
+    expect(root.querySelector('[data-action="toggle-sessions"]')!.getAttribute('aria-expanded')).toBe('false');
+    expect(root.querySelector('[data-action="attach"]')).toBeNull();               // collapsed: no session link is even in the DOM
+
+    click('[data-action="toggle-sessions"]'); await app.flush();
+    expect(root.querySelector('[data-action="toggle-sessions"]')!.getAttribute('aria-expanded')).toBe('true');
+    expect(text('[data-action="toggle-sessions"]')).toContain('▴');
+    expect(root.querySelectorAll('[data-action="attach"]').length).toBe(2);
+
+    click('[data-action="toggle-sessions"]'); await app.flush();
+    expect(root.querySelector('[data-action="attach"]')).toBeNull();               // collapses again
+    app.destroy();
+  });
+
+  it('with no sessions at all, no toggle is rendered (nothing to collapse)', async () => {
+    const f = fake([]); f.routes['GET /api/sessions'] = { sessions: [], active: [] };
+    const app = mount(f); await app.flush();
+    expect(root.querySelector('[data-action="toggle-sessions"]')).toBeNull();
+    app.destroy();
+  });
+});
+
 describe('microphone page', () => {
   it('the mic button starts the injected mic against the live session with the operator token; it toggles off', async () => {
     const f = fake(load('A'));

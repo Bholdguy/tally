@@ -30,7 +30,7 @@ describe('accessibility', () => {
 
   it('interactive controls are real buttons with visible focus styles; the timeline has an accessible name', () => {
     expect(css).toMatch(/button:focus-visible/);
-    expect(liveView(initialLive(), { now: 0, scenarios: [], mic: false, busy: null, sessions: [], role: 'operator' })).toMatch(/role="img" aria-label="evidence timeline"/);
+    expect(liveView(initialLive(), { now: 0, scenarios: [], mic: false, busy: null, sessions: [], role: 'operator', sessionsOpen: false })).toMatch(/role="img" aria-label="evidence timeline"/);
     expect(header({ tab: 'live', counts: null, metrics: null, demoBanner: null, role: 'operator' })).toMatch(/aria-pressed/);
   });
 });

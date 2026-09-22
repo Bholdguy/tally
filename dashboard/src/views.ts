@@ -81,7 +81,10 @@ export function header(ui: { tab: string; counts: any | null; metrics: any | nul
 ${ui.demoBanner ? `<div class="banner">${esc(ui.demoBanner)}</div>` : ''}</header>${tierBanner(ui.role)}`;
 }
 
-export function liveView(s: LiveState, ui: { now: number; scenarios: { name: string; label: string }[]; mic: boolean; busy: string | null; sessions: any[]; role: 'guest' | 'operator' }): string {
+/** the verdict legend, moved (D-40) into a small header bar directly above the evidence timeline rather than floating below it */
+const LEGEND_BAR = `<div class="legend-bar"><span class="badge ok"><span class="dot"></span>ALLOWED</span> <span class="badge repaired"><span class="dot"></span>REPAIRED</span> <span class="badge bad"><span class="dot"></span>CONFLICT / HELD</span> <span class="badge wait"><span class="dot"></span>WAITING</span> <span class="muted small">◆ barge-in (derived) · ┃ independent stream heard speech</span></div>`;
+
+export function liveView(s: LiveState, ui: { now: number; scenarios: { name: string; label: string }[]; mic: boolean; busy: string | null; sessions: any[]; role: 'guest' | 'operator'; sessionsOpen: boolean }): string {
   const live = !!s.session_id && !s.ended;
   const scen = ui.scenarios.map((x) => `<button data-action="demo" data-arg="${idAttr(x.name)}" ${ui.busy ? 'disabled' : ''}>${esc(x.label)}</button>`).join('');
   const past = ui.sessions.slice(0, 8).map((x) => `<button class="link" data-action="attach" data-arg="${idAttr(x.id)}">${esc(x.mode)} · ${esc(new Date(x.started_at).toLocaleTimeString())}${x.ended_at ? '' : ' · live'}</button>`).join(' ');
@@ -89,13 +92,21 @@ export function liveView(s: LiveState, ui: { now: number; scenarios: { name: str
     ? `<div class="controls"><button data-action="start" ${live || ui.busy ? 'disabled' : ''}>Start live call</button><button data-action="end" ${live ? '' : 'disabled'}>End call</button>
 <button data-action="mic" ${live ? '' : 'disabled'} aria-pressed="${ui.mic}">${ui.mic ? '🎙 Mic on: stop' : '🎙 Use microphone'}</button>${ui.busy ? `<span class="muted">${esc(ui.busy)}</span>` : ''}</div>`
     : `<p class="muted small">Guest view: starting a real call and the microphone need operator sign-in. The scenarios below run the same real pipeline against prerecorded audio.</p>`;
+  // sessions-open state lives in UiState, not a native <details>: render() rebuilds the whole DOM on every live event, which would
+  // otherwise snap a native disclosure shut mid-call (see main.ts)
+  const sessionsBlock = ui.sessions.length
+    ? `<div class="controls sessions-toggle"><button class="link" data-action="toggle-sessions" aria-expanded="${ui.sessionsOpen}">Recent sessions ${ui.sessionsOpen ? '▴' : '▾'}</button>${ui.sessionsOpen ? `<span class="sessions-list">${past}</span>` : ''}</div>`
+    : '';
   return `<section id="live">
+<div class="panel top-controls">
 ${opControls}
-<div class="controls"><span class="muted">Deterministic demo (scripted agent, prerecorded audio):</span>${scen}</div>
-${past ? `<div class="controls"><span class="muted">Sessions:</span>${past}</div>` : ''}
+<div class="controls demo-controls"><span class="muted">Deterministic demo (scripted agent, prerecorded audio):</span>${scen}</div>
+</div>
+${sessionsBlock}
 ${waitingChip(s, ui.now)}
-<div class="panel" id="timeline"><h3>Evidence timeline <span class="muted">${s.session_id ? esc(s.session_id.slice(0, 18)) : 'no session'}${s.mode ? ` · ${esc(s.mode)}` : ''}</span></h3>${renderSvg(layout(s))}
-<p class="legend"><span class="badge ok"><span class="dot"></span>ALLOWED</span> <span class="badge repaired"><span class="dot"></span>REPAIRED</span> <span class="badge bad"><span class="dot"></span>CONFLICT / HELD</span> <span class="badge wait"><span class="dot"></span>WAITING</span> ◆ barge-in (derived) · ┃ independent stream heard speech</p></div>
+<div class="panel" id="timeline"><h3>Evidence timeline <span class="muted">${s.session_id ? esc(s.session_id.slice(0, 18)) : 'no session'}${s.mode ? ` · ${esc(s.mode)}` : ''}</span></h3>
+${LEGEND_BAR}
+${renderSvg(layout(s))}</div>
 ${transcripts(s)}<div class="two-col">${callLog(s)}${orderPanel(s.order)}</div></section>`;
 }
 

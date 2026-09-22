@@ -14,7 +14,7 @@ const visible = (html: string) => html.replace(/<title>[^<]*<\/title>/g, '').rep
 const MACHINE = new Set(['add_item', 'remove_item', 'update_quantity', 'apply_modifier', 'confirm_order', 'get_order_state', 'agent_speech']);
 const ids = new Set<string>([...MENU.map((m) => m.item_id), ...ALL_MODIFIERS].filter((x) => x.includes('_')));
 
-const UI = { now: 0, scenarios: [], mic: false, busy: null, sessions: [], role: 'operator' as const };
+const UI = { now: 0, scenarios: [], mic: false, busy: null, sessions: [], role: 'operator' as const, sessionsOpen: false };
 
 describe('no internal item or option id reaches an operator surface', () => {
   for (const name of ['A', 'B', 'dropout', 'confidence']) {

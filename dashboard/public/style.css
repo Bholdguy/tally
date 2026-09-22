@@ -29,6 +29,14 @@ input { background: var(--bg); color: var(--text); border: 1px solid var(--line)
 .tier-banner form[data-form="login"] button:hover { opacity: .92; }
 main { padding: 12px 16px; display: grid; gap: 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+/* Live tab, top section only (D-40): the operator/guest controls and the demo scenario buttons read as one bordered block instead of
+   loosely stacked rows; the inner .controls rows lose their own 6px margin since the panel's flex gap already spaces them. */
+.top-controls { display: flex; flex-direction: column; gap: 8px; }
+.top-controls .controls { margin: 0; }
+.sessions-toggle { margin: 4px 0 0; }
+.sessions-toggle .sessions-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
+/* the verdict legend as a small header bar directly above the evidence timeline, not a floating row below it */
+.legend-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 10px; margin-bottom: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; } .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
 .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
