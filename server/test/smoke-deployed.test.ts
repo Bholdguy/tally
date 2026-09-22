@@ -66,9 +66,10 @@ describe('smoke test against BROKEN deployments fails, and says which check', ()
     const stub: Server = createServer((req, res) => {
       const csp = "default-src 'none'; script-src 'self'; style-src 'self'";
       if (req.url === '/healthz') { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"ok":true}'); }
-      else if (req.url === '/') { res.writeHead(200, { 'content-type': 'text/html', 'content-security-policy': csp, 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' }); res.end('<script src="/app.js"></script>'); }
-      else if (req.url === '/app.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(`const t="${TOKEN}"`); }
-      else if (req.url === '/style.css') { res.writeHead(200, { 'content-type': 'text/css' }); res.end('body{}'); }
+      else if (req.url === '/') { res.writeHead(200, { 'content-type': 'text/html', 'content-security-policy': csp, 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' }); res.end('<html><body>Tally</body></html>'); }
+      else if (req.url === '/dashboard') { res.writeHead(200, { 'content-type': 'text/html', 'content-security-policy': csp, 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' }); res.end('<script src="/dashboard/app.js"></script>'); }
+      else if (req.url === '/dashboard/app.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(`const t="${TOKEN}"`); }
+      else if (req.url === '/dashboard/style.css') { res.writeHead(200, { 'content-type': 'text/css' }); res.end('body{}'); }
       else if (req.url === '/api/metrics') { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"generated_from":"stored rows"}'); }     // NO auth check
       else { res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: 'boom', stack: 'at Object.<anonymous> (C:\srv\app.ts:1:1)' })); }
     });

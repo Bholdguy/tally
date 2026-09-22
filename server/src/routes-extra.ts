@@ -11,6 +11,7 @@ import { runAll, runScenario, SCENARIOS, SCENARIO_LABELS, DEMO_BANNER, type Scen
 import type { SessionRuntime } from './runtime.js';
 
 const DEFAULT_DIST = join(dirname(fileURLToPath(import.meta.url)), '../../dashboard/dist');
+const DEFAULT_LANDING_DIST = join(dirname(fileURLToPath(import.meta.url)), '../../landing/public');
 const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 
 /** PCM16 mono 24 kHz -> a playable WAV (so the browser can play a case's recording without a path ever crossing the API) */
@@ -32,19 +33,27 @@ interface DemoRun { scenario: string; status: 'running' | 'done' | 'error'; step
 export function registerExtraRoutes(app: FastifyInstance, o: AppOptions, runtimes: Map<string, SessionRuntime>, amOperator: (req: FastifyRequest) => boolean): void {
   const store: Store | undefined = o.cases;
 
-  // ---- static dashboard (no auth: the files contain no secrets; the API they call does)
+  // ---- static files (no auth: neither directory contains a secret; the API they call does). Two separate sites share this server:
+  // the marketing page at `/` (landing/public, plain HTML+CSS, no build step, no JS) and the operator dashboard at `/dashboard`
+  // (dashboard/dist, built by `npm run build:dashboard`). Moving the dashboard off `/` does not touch any `/api/*` route.
   const dist = o.dashboardDir ?? DEFAULT_DIST;
-  const serve = (file: string) => async (_req: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown }; header: (k: string, v: string) => unknown; type: (t: string) => unknown; send: (b: unknown) => unknown }) => {
-    const p = join(dist, file);
-    if (!existsSync(p)) return reply.code(404).send({ error: 'dashboard_not_built', hint: 'run: npm run build:dashboard' });
+  const landingDist = o.landingDir ?? DEFAULT_LANDING_DIST;
+  const serveFrom = (dir: string, file: string, notBuiltError: { error: string; hint: string }) => async (_req: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown }; header: (k: string, v: string) => unknown; type: (t: string) => unknown; send: (b: unknown) => unknown }) => {
+    const p = join(dir, file);
+    if (!existsSync(p)) return reply.code(404).send(notBuiltError);
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) reply.header(k, v);
     reply.type(TYPES[file.slice(file.lastIndexOf('.'))] ?? 'application/octet-stream');
     return reply.send(readFileSync(p));
   };
-  app.get('/', serve('index.html'));
-  app.get('/index.html', serve('index.html'));
-  app.get('/app.js', serve('app.js'));
-  app.get('/style.css', serve('style.css'));
+  const dashboardMissing = { error: 'dashboard_not_built', hint: 'run: npm run build:dashboard' };
+  const landingMissing = { error: 'landing_not_found', hint: 'landing/public is missing index.html/style.css' };
+  app.get('/', serveFrom(landingDist, 'index.html', landingMissing));
+  app.get('/index.html', serveFrom(landingDist, 'index.html', landingMissing));
+  app.get('/style.css', serveFrom(landingDist, 'style.css', landingMissing));
+  app.get('/dashboard', serveFrom(dist, 'index.html', dashboardMissing));
+  app.get('/dashboard/index.html', serveFrom(dist, 'index.html', dashboardMissing));
+  app.get('/dashboard/app.js', serveFrom(dist, 'app.js', dashboardMissing));
+  app.get('/dashboard/style.css', serveFrom(dist, 'style.css', dashboardMissing));
 
   // ---- metrics (Step 12): computed from stored rows on every request
   app.get('/api/metrics', async (_req, reply) => (store ? computeMetrics(store) : reply.code(404).send({ error: 'not_found' })));

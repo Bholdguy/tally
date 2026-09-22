@@ -19,8 +19,10 @@ export interface AppOptions {
   cases?: Store;
   /** audio-tier replay: seconds of silence after the last byte before the final order is read (default 8000 ms) */
   replaySettleMs?: number;
-  /** built dashboard files (default: <repo>/dashboard/dist) */
+  /** built dashboard files, served at /dashboard (default: <repo>/dashboard/dist) */
   dashboardDir?: string;
+  /** marketing landing page files, served at / (default: <repo>/landing/public; plain HTML+CSS, no build step) */
+  landingDir?: string;
   /** deterministic demo runner: where recordings go, and the runtime options (gating of the ACTIVE config) each demo session uses */
   demo?: { audioDir: string; runtime: () => Partial<RuntimeOptions> };
   /** `systemPrompt`/`configVersion`: the config under test (audio-tier replay of a candidate) or the active one (new sessions) */

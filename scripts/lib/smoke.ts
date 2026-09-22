@@ -78,16 +78,22 @@ export async function runSmoke(baseUrl: string, token: string, o: SmokeOptions =
   const json = async (p: string, init: RequestInit = {}) => { const r = await fetch(base + p, { ...init, headers: { ...H, ...(init.headers as Record<string, string> | undefined) } }); return { status: r.status, body: (await r.json().catch(() => null)) as any, headers: r.headers }; };
   const secret = o.secretToScan ?? process.env.ASSEMBLYAI_API_KEY;
 
-  // 1. reachable, and the dashboard is what we shipped
+  // 1. reachable; the landing page (/) and the dashboard (/dashboard) are what we shipped, each under the same strict CSP
   await guard('server is reachable (GET /healthz)', async () => { const r = await get('/healthz', false); check('server is reachable (GET /healthz)', r.status === 200, `HTTP ${r.status}`); });
-  await guard('dashboard page is served', async () => {
+  await guard('landing page is served at /', async () => {
     const r = await get('/', false); const html = await r.text();
     const csp = r.headers.get('content-security-policy') ?? '';
-    check('dashboard page is served', r.status === 200 && /text\/html/.test(r.headers.get('content-type') ?? '') && html.includes('/app.js'), `HTTP ${r.status}`);
+    check('landing page is served at /', r.status === 200 && /text\/html/.test(r.headers.get('content-type') ?? '') && /Tally/.test(html), `HTTP ${r.status}`);
+    check('landing security headers (CSP without inline/eval, nosniff, no-referrer)', /script-src 'self'/.test(csp) && !/unsafe-inline|unsafe-eval/.test(csp) && r.headers.get('x-content-type-options') === 'nosniff' && r.headers.get('referrer-policy') === 'no-referrer', csp ? 'CSP present' : 'no CSP header');
+  });
+  await guard('dashboard page is served at /dashboard', async () => {
+    const r = await get('/dashboard', false); const html = await r.text();
+    const csp = r.headers.get('content-security-policy') ?? '';
+    check('dashboard page is served at /dashboard', r.status === 200 && /text\/html/.test(r.headers.get('content-type') ?? '') && html.includes('/dashboard/app.js'), `HTTP ${r.status}`);
     check('dashboard security headers (CSP without inline/eval, nosniff, no-referrer)', /script-src 'self'/.test(csp) && !/unsafe-inline|unsafe-eval/.test(csp) && r.headers.get('x-content-type-options') === 'nosniff' && r.headers.get('referrer-policy') === 'no-referrer', csp ? 'CSP present' : 'no CSP header');
   });
   await guard('dashboard script and stylesheet are served', async () => {
-    const js = await get('/app.js', false); const css = await get('/style.css', false); const body = await js.text();
+    const js = await get('/dashboard/app.js', false); const css = await get('/dashboard/style.css', false); const body = await js.text();
     check('dashboard script and stylesheet are served', js.status === 200 && css.status === 200 && /javascript/.test(js.headers.get('content-type') ?? ''), `app.js HTTP ${js.status} (${body.length} bytes), style.css HTTP ${css.status}`);
     check('served script contains no operator token, no API key, no vendor host', !body.includes(token) && !(secret && secret.length >= 8 && body.includes(secret)) && !/assemblyai\.com/i.test(body));
   });

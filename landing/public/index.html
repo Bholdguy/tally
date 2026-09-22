@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tally — The Reliability Layer for Voice Agents</title>
+<meta name="description" content="Tally validates every voice agent tool call against independent evidence, holds what it can't verify, and repairs it live — before the order, the booking, or the total is committed.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/" aria-label="Tally home">
+      <svg class="brand-mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+        <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#brandGrad)"/>
+        <path d="M9 16.5l4.5 4.5L23 11" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <defs><linearGradient id="brandGrad" x1="0" y1="0" x2="32" y2="32"><stop offset="0" stop-color="#8b7bff"/><stop offset="1" stop-color="#4dd8c0"/></linearGradient></defs>
+      </svg>
+      <span class="wordmark">Tally</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#what-is-tally">How it works</a>
+      <a href="#the-gate">The Gate</a>
+      <a href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">Live Demo</a>
+      <a href="https://github.com/Bholdguy/tally#readme" target="_blank" rel="noopener">Docs</a>
+    </nav>
+    <a class="btn btn-pill btn-accent nav-cta" href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">Try the Live Demo</a>
+    <input type="checkbox" id="nav-toggle-input" class="nav-toggle-input">
+    <label for="nav-toggle-input" class="nav-toggle" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </label>
+  </div>
+  <div id="nav-mobile" class="nav-mobile">
+    <a href="#what-is-tally">How it works</a>
+    <a href="#the-gate">The Gate</a>
+    <a href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">Live Demo</a>
+    <a href="https://github.com/Bholdguy/tally#readme" target="_blank" rel="noopener">Docs</a>
+    <a class="btn btn-pill btn-accent" href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">Try the Live Demo</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero-wrap">
+    <div class="hero card-gradient">
+      <div class="hero-copy">
+        <p class="eyebrow">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Built on AssemblyAI's Voice Agent API
+        </p>
+        <h1>The Reliability Layer<br>for Voice Agents</h1>
+        <p class="subhead">Every voice agent trusts its own tool calls. Tally is the layer that catches it when they're wrong, before the order, the booking, or the total is committed.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-pill btn-accent btn-lg" href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">Watch It Catch a Mistake</a>
+          <span class="hero-note">No login needed — the guest view is live</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="timeline-card">
+          <div class="timeline-head">
+            <span class="tl-dot"></span> Evidence timeline
+          </div>
+          <div class="tl-row">
+            <span class="tl-label">Independent stream</span>
+            <span class="tl-seg tl-seg-a">"two burgers"</span>
+            <span class="tl-seg tl-seg-b tl-correction">"no — three"</span>
+          </div>
+          <div class="tl-row">
+            <span class="tl-label">Voice Agent</span>
+            <span class="tl-seg tl-seg-dim">add_item × 2</span>
+          </div>
+          <div class="tl-verdict-row">
+            <span class="verdict-stack" aria-hidden="true">
+              <span class="verdict-badge verdict-conflict">CONFLICT</span>
+              <span class="verdict-badge verdict-allowed">ALLOWED</span>
+            </span>
+            <span class="tl-wait">⏳ waiting on independent evidence</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IS TALLY -->
+  <section id="what-is-tally" class="split">
+    <div class="split-left">
+      <h2>What is Tally?</h2>
+      <a class="btn btn-outline" href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">See the Evidence Timeline</a>
+    </div>
+    <div class="split-right">
+      <p>Tally sits between a voice agent's tool calls and the order it's about to place. It validates every extracted fact against independent evidence, holds anything it can't verify, and repairs it live, before a customer's correction gets lost.</p>
+    </div>
+  </section>
+
+  <!-- FEATURE CARDS -->
+  <section id="the-gate" class="features">
+    <div class="feature-card feature-light">
+      <div class="feature-icon feature-icon-light" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 2l7 3.5v5.4c0 4.6-3 7.8-7 9.1-4-1.3-7-4.5-7-9.1V5.5L11 2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 11l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Catches what the agent misses</h3>
+      <p>An independent speech stream gives Tally its own evidence, so a correction the agent's own transcript dropped still gets caught.</p>
+    </div>
+    <div class="feature-card feature-dark">
+      <div class="feature-icon feature-icon-dark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 6.5V11l3.2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Sub-second when it matters</h3>
+      <p>The gate never waits when nobody's speaking. It only holds while there's a real correction in flight, and never past a bounded ceiling.</p>
+    </div>
+    <div class="feature-card feature-dark">
+      <div class="feature-icon feature-icon-dark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="6" width="16" height="12" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9.5h16M7.5 6V4.6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </div>
+      <h3>Nothing ships unverified</h3>
+      <p>Every hold becomes a replayable case. Every config change has to pass the full regression suite before it can go live.</p>
+    </div>
+  </section>
+
+  <!-- BACKED BY -->
+  <section class="backed-by">
+    <p class="backed-by-label">Built on</p>
+    <div class="logo-row">
+      <span class="logo-chip logo-chip-primary">AssemblyAI</span>
+      <span class="logo-chip">TypeScript</span>
+      <span class="logo-chip">SQLite</span>
+      <span class="logo-chip">Node.js</span>
+      <span class="logo-chip logo-chip-event">lablab.ai Voice Agent Hackathon</span>
+    </div>
+  </section>
+
+  <!-- USE CASES -->
+  <section class="use-cases">
+    <div class="use-cases-left">
+      <h2>Tally in Action</h2>
+      <p>Built and proven on live voice ordering, the same reliability contract extends to any voice agent making tool calls that matter: scheduling, intake, support.</p>
+    </div>
+    <div class="use-case-card">
+      <div class="use-case-illustration" aria-hidden="true">
+        <svg viewBox="0 0 200 140" width="100%" height="140">
+          <defs><linearGradient id="ticketGrad" x1="0" y1="0" x2="200" y2="140"><stop offset="0" stop-color="#1a1240"/><stop offset="1" stop-color="#2b2166"/></linearGradient></defs>
+          <rect x="30" y="12" width="140" height="116" rx="10" fill="url(#ticketGrad)"/>
+          <path d="M30 128l8-8 8 8 8-8 8 8 8-8 8 8 8-8 8 8 8-8 8 8 8-8 8 8 8-8 8 8v-8H30z" fill="url(#ticketGrad)"/>
+          <line x1="46" y1="34" x2="120" y2="34" stroke="#8b7bff" stroke-width="3" stroke-linecap="round"/>
+          <line x1="46" y1="48" x2="154" y2="48" stroke="#4a3f86" stroke-width="3" stroke-linecap="round"/>
+          <line x1="46" y1="62" x2="140" y2="62" stroke="#4a3f86" stroke-width="3" stroke-linecap="round"/>
+          <line x1="46" y1="76" x2="100" y2="76" stroke="#ff9b93" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="140" cy="76" r="9" fill="#431a17" stroke="#ff9b93" stroke-width="1.4"/>
+          <path d="M137 76l2 2 4-4.4" fill="none" stroke="#ff9b93" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="46" y1="94" x2="130" y2="94" stroke="#4dd8c0" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="146" cy="94" r="9" fill="#12351f" stroke="#4dd8c0" stroke-width="1.4"/>
+          <path d="M142.5 94l2.3 2.3 4.7-5.1" fill="none" stroke="#4dd8c0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h3>Restaurant Ordering</h3>
+      <p>A customer corrects an order mid-sentence. Tally holds the stale quantity, triggers a scoped re-ask, and never lets the wrong order reach the kitchen.</p>
+      <a class="link-arrow" href="https://tally-1wnr.onrender.com" target="_blank" rel="noopener">See it live →</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="wordmark">Tally</span>
+      <p>Built for the AssemblyAI Voice Agent Hackathon.</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/Bholdguy/tally" target="_blank" rel="noopener">GitHub</a>
+      <!-- TODO: replace with the actual lablab.ai submission page URL once Tally is submitted; https://lablab.ai is the general event site, not the submission -->
+      <a href="https://lablab.ai" target="_blank" rel="noopener">Hackathon</a>
+      <a href="/dashboard">Operator dashboard</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

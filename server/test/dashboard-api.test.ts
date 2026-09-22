@@ -38,19 +38,30 @@ async function world() {
   return { app, runtimes, agent, stt, store, dir, port, base: `http://127.0.0.1:${port}`, H };
 }
 
-describe('static dashboard', () => {
-  it('is served without a token (it contains no secrets) under a strict CSP; a missing build says how to build it', async () => {
+describe('static pages: the landing page at / and the dashboard at /dashboard', () => {
+  it('the landing page is served at / without a token, under the same strict CSP', async () => {
     const w = await world();
     const r = await fetch(`${w.base}/`);
     expect(r.status).toBe(200);
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) expect(r.headers.get(k)).toBe(v);
     expect(r.headers.get('content-security-policy')).toMatch(/default-src 'none'.*script-src 'self'.*frame-ancestors 'none'/);
     expect(r.headers.get('content-security-policy')).not.toMatch(/unsafe-inline|unsafe-eval|assemblyai/);
-    expect((await fetch(`${w.base}/app.js`)).headers.get('content-type')).toMatch(/javascript/);
     expect((await fetch(`${w.base}/style.css`)).headers.get('content-type')).toMatch(/css/);
+    const html = await r.text();
+    expect(html).toContain('Tally');
+    expect((await fetch(`${w.base}/index.html`)).status).toBe(200);
+  });
+  it('the dashboard is served at /dashboard without a token, under the same strict CSP; a missing build says how to build it', async () => {
+    const w = await world();
+    const r = await fetch(`${w.base}/dashboard`);
+    expect(r.status).toBe(200);
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) expect(r.headers.get(k)).toBe(v);
+    expect((await fetch(`${w.base}/dashboard/index.html`)).status).toBe(200);
+    expect((await fetch(`${w.base}/dashboard/app.js`)).headers.get('content-type')).toMatch(/javascript/);
+    expect((await fetch(`${w.base}/dashboard/style.css`)).headers.get('content-type')).toMatch(/css/);
     const { app } = await buildApp({ operatorToken: TOKEN, dashboardDir: join(w.dir, 'nope'), startRuntime: async () => { throw new Error('x'); } });
-    expect((await app.inject({ url: '/' })).statusCode).toBe(404);
-    expect((await app.inject({ url: '/' })).json()).toMatchObject({ hint: expect.stringContaining('build:dashboard') });
+    expect((await app.inject({ url: '/dashboard' })).statusCode).toBe(404);
+    expect((await app.inject({ url: '/dashboard' })).json()).toMatchObject({ hint: expect.stringContaining('build:dashboard') });
     await app.close();
   });
   it('these read routes, and triggering a demo scenario, are open to a guest (no token, D-39); an unknown id is a plain 404', async () => {
