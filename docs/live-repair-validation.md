@@ -1,6 +1,6 @@
 # Live repair validation (Step 6, condition 2)
 
-**Status: BOTH forms have now run.** The automated form (2026-09-21, below) drove the real agent with a prerecorded synthetic voice and an induced fault. The **human microphone session** (2026-09-23, at the end of this file) is the real thing: a person, a real microphone, the real managed agent, no induced fault — Step 6 condition 2 is satisfied.
+**Status: BOTH forms have now run, across two human sessions.** The automated form (2026-09-21, below) drove the real agent with a prerecorded synthetic voice and an induced fault. The **human microphone sessions** (2026-09-23, at the end of this file: Session 1 correction/repair, Session 2 barge-in/stress/drift) are the real thing: a person, a real microphone, the real managed agent, no induced fault. Every check in the original "What it checks" table below — A, B, C, D — has now been exercised by a real human at least once. Step 6 condition 2 is satisfied.
 
 ## Part 1 — automated form: what was run
 `npx tsx --env-file-if-exists=.env scripts/live-repair-session.ts all`
@@ -48,9 +48,11 @@ STT stage (end of customer speech → independent final): p50 ≈ 300 ms, p95 �
 - One run per check with the final wording (plus repeats of S1); the managed model is not seedable, so results can differ tomorrow.
 - The dashboard mic page (browser capture, resampling, WebSocket, playback of the agent's voice) was tested with unit tests and a fake mic, not driven by a real browser microphone.
 
-## Part 2 — human microphone session (run 2026-09-23)
+## Part 2 — human microphone sessions (run 2026-09-23)
 
-**Run by the owner**, real browser microphone, real managed Voice Agent, real independent STT stream, no induced fault — this is what Part 1 could not exercise (a live person, real ASR errors, a real barge-in opportunity). Session `sess_4bb6b5ea-0d9c-4280-96d6-a44c085315eb`, case `case_639c0db7-1bda-4621-ae93-0f6ebbc2f4a7` (`bbc2f4a7`), origin `live`, resolution `resolved`.
+**Run by the owner**, real browser microphone, real managed Voice Agent, real independent STT stream, no induced fault — this is what Part 1 could not exercise (a live person, real ASR errors, a real barge-in opportunity). Two sessions, same day.
+
+### Session 1: correction and repair
 
 **What was said:** "2 burgers" then, before the item was confirmed, "no wait, make it 3."
 
@@ -88,3 +90,26 @@ The DOWN status was emitted **146 ms after** `session_ended`, i.e. as a direct c
 - The dashboard's `audio` action (`dashboard/src/main.ts`) fetches the whole response via `fetch(...).blob()` (which only resolves once the complete body has been read) and never calls `revokeObjectURL` on it, so nothing on the client discards or truncates the blob after creation.
 
 Every layer checked — capture, storage, the case's pointer, the WAV header, the fetch — is byte-complete and correctly declared. This narrows the cause to the browser's own `<audio>` playback of the `blob:` URL, which I can't reproduce or instrument from here. If it recurs: check the browser console for a decode/media error on that `<audio>` element, and try **right-click → Save As** or dragging the blob to a new tab to see whether the saved file plays fully outside the dashboard (which would confirm it's a player/rendering quirk, not the file). Tell me the browser/OS and any console error and I'll dig further; for now this is recorded as an open, non-data-loss playback issue, not fixed.
+
+### Session 2: barge-in, rapid-correction stress, and spoken drift
+
+Session `sess_7f5f02a8-ce00-405b-8492-e5624ca85c29`. Three things exercised in one call; all three confirmed directly from the session's own stored events, not just from what was observed live.
+
+**Barge-in over the agent — PASS.** Confirmed check D from Part 1's table, this time by a real human. `barge_in` derived at `t_ms 33,040` (33.0 s), `source_event_ids: [evt_28, evt_29]`, `reaction_ms: 0`. This is the last of the four checks (A/B/C/D) to be confirmed against a real human; all four are now real-human-confirmed at least once (A/B here and in Session 1, C in Session 1, D here).
+
+**Rapid repeated corrections (2→3→4→5 in quick succession) — the fail-closed behavior is correct, not a bug.** Full sequence from the stored event log:
+| t (s) | Event |
+|---|---|
+| 23.4 | `gate_waiting` on `add_item` (qty 4) |
+| 27.5 | repair asked (`PENDING_EVIDENCE`), attempt 1 |
+| 33.0 | **barge-in** over the repair question |
+| 37.3 | `gate_waiting` on `update_quantity` (qty 5) |
+| 41.4 | repair asked, attempt 2 |
+| 55.8–59.9 | a third `update_quantity` (qty 5) call arrives, waits, times out again |
+| 59.9 | repair **escalated** (attempt 3): hand-off spoken, *"I'm not able to confirm the classic burger myself, so a team member will confirm that one with you at pickup…"* |
+
+Three separate `PENDING_EVIDENCE` holds (one `add_item`, two `update_quantity`) all timed out on the 4 s evidence wait because corrections were arriving faster than the independent stream could finalise a turn — exactly the condition `EVIDENCE_WAIT_MAX_MS` exists to fail closed on. All three became cases, all three auto-tagged `regression_candidate` (the repeat-pattern tagger correctly flipped on the pattern `PENDING_EVIDENCE|update_quantity|evidence_timeout|na` reaching its threshold), and the third escalated to a hand-off rather than ever guessing a quantity. **The final order: `items_json: "[]"`, `total: 0`, `status: "open"`** — confirmed directly from the `orders` table. Not one line was ever committed, despite four attempted quantity values (2, 3, 4, 5) across the call. This is rule 1 (no ALLOW on timeout) and the repair scope/attempt/escalation design (D-27) working exactly as specified under a stress pattern nobody explicitly designed a demo for: **confirmed intended behavior, not a bug.**
+
+**Spoken-drift detection and correction — mechanism confirmed live; one honest caveat.** The agent stated the order contained a "classic burger" that was not actually on it. Tally's drift check caught this and issued the correction instruction `"Let me correct that. I don't have any classic burgers on your order."` (`repair_events`, `reason: SPOKEN_STATE_DRIFT`). The agent **spoke it verbatim** at `t_ms 76,126`, confirmed from `transcript_agent`. The call ended about 8 s later.
+
+Case `case_26783f10-ba85-46ae-8849-a01aa984f275` (`a984f275`): `conflict_type: SPOKEN_STATE_DRIFT`, `resolution: unresolved_at_hangup`; the `repair_events` row for it shows `outcome: pending`, `resolved_at: NULL`. **This is the expected terminal state, not a failure of the correction** — spoken-drift repair is a one-shot instruction (D-09/D-38: Tally may only supply words for Plane 1 to speak, never a voice path of its own), and unlike a `HOLD` repair there is no re-issued tool call for Tally to re-validate against, so nothing in the pipeline ever marks a spoken correction "resolved"; `reliability/src/metrics.ts` explicitly excludes `SPOKEN_STATE_DRIFT`/`TOTAL_MISMATCH` from resolved-repair accounting for exactly this reason, and `committer.ts`'s "still-pending drift scopes" query treats `resolved_at IS NULL` on these reasons as the normal, permanent condition. What's genuinely new and confirmed here: the **mechanism** — detect the drift, generate the correct instruction, get the agent to speak it verbatim — fires correctly against the real managed agent, live. What is **not** established, and can't be by this system's current design: whether the customer actually registered the spoken correction. That gap was already documented (D-38, README limitation 6) and remains open; this run confirms the mechanism, not a new capability.
