@@ -4,6 +4,8 @@
   --bg: #0f1419; --panel: #171e26; --line: #2a3542; --text: #e8eef5; --muted: #9db0c3;
   --ok: #7ee29a; --ok-bg: #12351f; --repaired: #ffd76a; --repaired-bg: #3a3010; --bad: #ff9b93; --bad-bg: #431a17; --wait: #c5cfda; --wait-bg: #2b3440;
   --speech: #7fb8ff; --agent: #c9a7ff;
+  /* the same accent gradient as the landing page (landing/public/style.css --accent/--accent-2), used only for the sign-in CTA */
+  --accent: #8b7bff; --accent-2: #4dd8c0;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
@@ -19,6 +21,12 @@ input { background: var(--bg); color: var(--text); border: 1px solid var(--line)
 .tier-banner { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 16px; border-bottom: 1px solid var(--line); }
 .tier-banner.guest { background: var(--wait-bg); } .tier-banner.operator { background: var(--ok-bg); }
 .controls.inline { margin: 0; gap: 6px; }
+/* the sign-in form's own input/button, styled to match the landing page's accent-gradient CTA instead of the plain browser defaults
+   the generic `input`/`button` rules above give every other control; radius and padding stay the same 6px/6-10px rhythm as .tab/.cnt */
+.tier-banner form[data-form="login"] input { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; min-width: 190px; }
+.tier-banner form[data-form="login"] input:focus-visible { border-color: var(--accent); }
+.tier-banner form[data-form="login"] button { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0a0c14; border: none; border-radius: 6px; padding: 6px 14px; font-weight: 700; }
+.tier-banner form[data-form="login"] button:hover { opacity: .92; }
 main { padding: 12px 16px; display: grid; gap: 12px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; } .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }

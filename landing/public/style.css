@@ -1,9 +1,8 @@
 /* Tally marketing page. Deliberately distinct from the operator dashboard's utilitarian palette (dashboard/public/style.css):
-   this is the pitch, not the tool. Deep navy/violet base, white content cards, one accent gradient (violet -> teal). No JS. */
+   this is the pitch, not the tool. Deep navy/violet base, dark content cards, one accent gradient (violet -> teal). No JS. */
 :root {
   --bg: #0a0c14; --bg-2: #0d1020;
   --ink: #f4f2ff; --ink-muted: #b9b6d6;
-  --card: #ffffff; --card-ink: #1a1533; --card-muted: #5c577c;
   --dark-card: #171233; --dark-card-2: #1d1840; --dark-card-line: #332a5e;
   --accent: #8b7bff; --accent-2: #4dd8c0;
   --line: #241f42;
@@ -89,13 +88,12 @@ section { padding: 88px 24px; }
 /* ---------- feature cards ---------- */
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .feature-card { border-radius: var(--radius-md); padding: 32px 28px; }
-.feature-light { background: var(--card); color: var(--card-ink); }
+/* all three cards share the dark base now; the icon chip is the only accent that stays "light" (a deliberate pop, not a leftover) */
 .feature-dark { background: linear-gradient(160deg, var(--dark-card-2), var(--dark-card)); border: 1px solid var(--dark-card-line); color: var(--ink); }
 .feature-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
 .feature-icon-light { background: #efeaff; color: #6a4fe0; }
 .feature-icon-dark { background: rgba(139,123,255,.16); color: var(--accent-2); }
 .feature-card h3 { font-size: 20px; margin-bottom: 10px; }
-.feature-light p { color: var(--card-muted); font-size: 15px; }
 .feature-dark p { color: var(--ink-muted); font-size: 15px; }
 
 /* ---------- backed by ---------- */
