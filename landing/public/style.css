@@ -102,7 +102,6 @@ section { padding: 88px 24px; }
 .logo-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px; }
 .logo-chip { font-weight: 700; font-size: 14px; color: var(--ink-muted); padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.03); }
 .logo-chip-primary { color: var(--ink); border-color: var(--accent); background: rgba(139,123,255,.1); }
-.logo-chip-event { color: var(--accent-2); border-color: var(--accent-2); }
 
 /* ---------- use cases ---------- */
 .use-cases { display: grid; grid-template-columns: .8fr 1.2fr; gap: 32px; align-items: center; }
@@ -118,7 +117,6 @@ section { padding: 88px 24px; }
 /* ---------- footer ---------- */
 .site-footer { border-top: 1px solid var(--line); padding: 40px 24px; }
 .footer-inner { max-width: var(--max); margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; }
-.footer-brand p { margin-top: 6px; font-size: 13px; color: var(--ink-muted); }
 .footer-links { display: flex; gap: 24px; font-size: 14px; color: var(--ink-muted); }
 .footer-links a:hover { color: var(--ink); }
 
