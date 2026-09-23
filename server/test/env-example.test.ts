@@ -24,7 +24,7 @@ describe('.env.example matches the code', () => {
   it('secrets are blank; the documented defaults equal the code\'s defaults', () => {
     for (const v of listed.filter((x) => /(KEY|TOKEN|SECRET|PASSWORD)$/.test(x.name))) expect(v.value, v.name).toBe('');
     const val = (n: string) => listed.find((x) => x.name === n)!.value;
-    expect(val('EVIDENCE_WAIT_MAX_MS')).toBe('4000'); expect(val('STT_STALL_MS')).toBe('2500'); expect(val('MIN_WORD_CONFIDENCE')).toBe('0.6');
+    expect(val('EVIDENCE_WAIT_MAX_MS')).toBe('4500'); expect(val('STT_STALL_MS')).toBe('2500'); expect(val('MIN_WORD_CONFIDENCE')).toBe('0.6');
     expect(val('REGRESSION_THRESHOLD')).toBe('3'); expect(val('LOCAL_VAD_HANGOVER_MS')).toBe('300'); expect(val('PORT')).toBe('8787'); expect(val('HOST')).toBe('127.0.0.1');
   });
 });

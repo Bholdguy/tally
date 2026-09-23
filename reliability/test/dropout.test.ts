@@ -73,8 +73,8 @@ describe('dropout mid-hold: gate + scripted evidence source (deterministic clock
     const res = await r.call('add_item', CALL);
     expect(res).toMatchObject({ verdict: 'HOLD', code: 'PENDING_EVIDENCE' });
     if (res.verdict !== 'HOLD') throw new Error('unreachable');
-    expect(res.waited_ms!).toBeGreaterThanOrEqual(4000);
-    expect(res.waited_ms!).toBeLessThan(4100);
+    expect(res.waited_ms!).toBeGreaterThanOrEqual(4500);
+    expect(res.waited_ms!).toBeLessThan(4600);
     r.close();
   });
 

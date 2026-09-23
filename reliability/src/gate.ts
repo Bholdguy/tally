@@ -73,7 +73,7 @@ export class Gate {
 
   constructor(private readonly o: GateOptions) {
     this.clock = o.clock ?? systemClock;
-    this.waitMax = o.evidenceWaitMaxMs ?? 4000;
+    this.waitMax = o.evidenceWaitMaxMs ?? 4500;
     this.minConf = o.minWordConfidence ?? 0.6;
     this.poll = o.pollMs ?? 25;
     this.extract = o.extract ?? extractEvidence;

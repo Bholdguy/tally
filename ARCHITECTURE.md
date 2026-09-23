@@ -138,7 +138,7 @@ Server exposes SSE `/api/live/:sessionId` of typed `TallyEvent`s: transcripts, V
 | Event parse failure | A `parse_warning` event is stored with the raw payload. There is no `evidence_degraded` session flag; evidence comes from the independent stream, so an unparseable agent-stream event cannot cause an ALLOW. |
 | Extractor throws | `HOLD UNVALIDATABLE` |
 | DB write fails | Rollback; `HOLD UNVALIDATABLE`; audit row attempted separately |
-| Gate slow | There is no overall gate timeout. The only wait is the evidence wait, bounded by `EVIDENCE_WAIT_MAX_MS` (4 s) plus stall detection (`STT_STALL_MS`); extraction, judgement and the commit are synchronous. On expiry the call is HELD (`PENDING_EVIDENCE`/`UNVALIDATABLE`), never ALLOWed. |
+| Gate slow | There is no overall gate timeout. The only wait is the evidence wait, bounded by `EVIDENCE_WAIT_MAX_MS` (4.5 s; raised from 4 s 2026-09-23, D-26 update, after the real-speech pass measured real agent latency landing consistently just over the old bound) plus stall detection (`STT_STALL_MS`); extraction, judgement and the commit are synchronous. On expiry the call is HELD (`PENDING_EVIDENCE`/`UNVALIDATABLE`), never ALLOWed. |
 | Duplicate `call_id` | second is rejected with prior verdict (idempotent) |
 
 ## 5b. Gate as implemented (Step 5)
