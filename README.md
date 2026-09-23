@@ -24,7 +24,7 @@ Other commands: `npm run demo -- A|B|C|D|confidence|dropout|all` (deterministic 
 
 ## Where things are
 `contract/` shared types, menu, repair wording · `db/` schema and triggers · `reliability/` the gate, evidence, cases, replay, promotion, metrics, adversarial harness (no network, no voice output) · `agent/` the reference agent (Plane 1: the only code that speaks) · `stt/` the independent evidence stream · `server/` composition root, API, demo runner · `dashboard/` the operator UI · `demo/clips` prerecorded synthetic audio.
-Design and decisions: `PRD.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `SECURITY.md`, `TESTING.md`, `DEMO.md`, `TASKS.md`, `adversarial-cases.md`.
+Design and decisions: `PRD.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `SECURITY.md`, `TESTING.md`, `TASKS.md`, `adversarial-cases.md`. `DEMO.md` (the demo script) is kept local-only and is not tracked in this repo.
 
 ## Security and privacy
 - The AssemblyAI key lives only in the server's environment. The browser talks only to this server (same origin); no credential of any kind reaches it. The operator token is sent as a header, never in a URL.

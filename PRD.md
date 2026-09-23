@@ -418,4 +418,4 @@ No payments/multi-location/delivery/retraining anywhere. HTTP tools and BYO-LLM 
 4. **Second STT stream for confidence: DEFERRED** past Step 12; not scoped; schema not confirmed. Text-instability is the proxy (G1, D-04).
 5. **TypeScript monorepo + SQLite: CONFIRMED.** Repo scaffold precedes Step 1 implementation.
 
-Companion documents: ARCHITECTURE.md, SECURITY.md, TESTING.md, DEMO.md, DECISIONS.md, `.env.example`, TASKS.md.
+Companion documents: ARCHITECTURE.md, SECURITY.md, TESTING.md, DECISIONS.md, `.env.example`, TASKS.md. DEMO.md is a local-only companion doc (the demo script), not present in this repo.

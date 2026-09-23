@@ -20,7 +20,7 @@ Nothing is persisted between wakes: **anything you want to keep from a session (
 5. Keep it awake: leave the dashboard tab open (its requests count), or `curl /healthz` every ~10 min from your machine. Do not rely on a tab in a background browser that suspends timers.
 
 ## Rehearsal run (do this once end to end, 20 min)
-Follow DEMO.md's 16 beats with these deployment-specific adjustments:
+Follow DEMO.md's 16 beats with these deployment-specific adjustments. (`DEMO.md` is kept local-only on the maintainer's machine, not tracked in this repo — if you don't have it, ask the maintainer for a copy.)
 - **Beat 1:** counters are 7 / 5 / 1 (not "6+").
 - **Beat 12:** D was already played by the seed, so playing it adds three more cases; either skip it or say so. Never claim "two more".
 - **Beat 13:** accepting another candidate makes Regressions 2; that is fine, but note it changes v2/v3 suite results if you re-run them (a v3 that passed 1/1 must still pass 2/2: check before the real demo, on a database you are willing to lose).
@@ -31,7 +31,7 @@ Follow DEMO.md's 16 beats with these deployment-specific adjustments:
 ## Cold-start plan during a live demo
 - **Before the audience arrives:** wake and verify (above); never start from a sleeping service.
 - **If it restarts mid-demo** (deploy, platform restart, idle): tell the audience plainly what happened: *"The free tier just restarted the process; it reseeds itself. Everything you saw was stored in a database that reset."* Then wait ~2 min for `/healthz`, sign in again, re-verify 7 / 5 / 1, continue from beat 1 or the last beat that does not depend on prior state. Do not improvise numbers.
-- **If the wake stalls (>4 min or the WARNING line):** switch to the local run (`npm run serve`, same DEMO.md, http://127.0.0.1:8787) rather than debug on stage. Keep the local `.env` ready and the token at hand.
+- **If the wake stalls (>4 min or the WARNING line):** switch to the local run (`npm run serve`, same DEMO.md beats — local-only file, not in this repo — http://127.0.0.1:8787) rather than debug on stage. Keep the local `.env` ready and the token at hand.
 - Say the limitation (README #16) if asked: no persistent disk, reseeds on boot, cold start after 15 idle minutes; the reliability layer's persistence is proven in the test suite against a real database.
 
 ## Where the two owner validations run
