@@ -99,4 +99,8 @@ const result: RunResult = {
 writeFileSync(join(out, `${name}.result.json`), JSON.stringify({ ran_at: new Date().toISOString(), intent, result }, null, 2));
 store.close();
 console.log(JSON.stringify({ name, order_equal: result.order_diff.equal, status: result.final_status, evidence_ok: evOk, calls: calls.map((c) => `${c.tool}:${c.verdict}${c.code ? '/' + c.code : ''}${c.content_matches_intent === false ? '(content!=intent)' : ''}`), stalls, recon }));
-process.exit(0);
+// let the agent/STT sockets finish closing (process.exit() while one is still closing aborts with a libuv assertion on Windows,
+// the same class of bug fixed in smoke-deployed.ts); the real-speech batch runner treats a nonzero/crashed exit as "failed to
+// run" even though the result was already written above, so this is not cosmetic: it was silently discarding good runs.
+process.exitCode = 0;
+setTimeout(() => process.exit(0), 2000).unref();

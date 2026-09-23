@@ -24,7 +24,7 @@ Every pivot from the brief caused by real API constraints, plus approved product
 | D-18 | A | `reply.started` is not speech; silence padding in hold mode |
 | D-19 | **DECIDED 2026-09-20 and executed: A adopted (PASS), B diagnostic (gap is hold-mode-specific, not adopted), C implemented, D rejected** | Live transcript is not a reliable evidence source under hold mode |
 | D-20 | A (implemented + tested) | Duplicate tool calls (`add_item(coke)` repeated in 5/5 clean runs) |
-| D-21 | A (owner; pass still REQUIRED, not yet run) | Validation status of the independent-evidence design; real-speech pass REQUIRED before demo lock |
+| D-21 | A (owner; pass run 2026-09-23, OVERALL FAIL — see D-26's update) | Validation status of the independent-evidence design; real-speech pass REQUIRED before demo lock |
 | D-22 | A (implemented + tested) | Confirm-time reconciliation of the order against the customer's evidence |
 | D-23 | A | Step 5 gate implemented; measured corrections to spike-A claims; real agent hallucinations caught |
 | D-24 | A (implemented + tested) | Content-vs-intent coverage: the gate validates all content, not just quantity |
@@ -202,7 +202,25 @@ Approved: Step 5 gate judges against the independent stream (D-04), waits up to 
 
 ### D-26 · The real-speech validation pass is scheduled as a gate, with criteria fixed in advance (owner decision, 2026-09-20)
 The pass is no longer deferred. Protocol, speaker cards, consent text, harness and aggregator are built and dry-run against the real APIs with a synthetic recording (excluded from results): `docs/real-speech-validation.md`, `scripts/real-speech-{run,batch,summary}.ts`. **Pass criteria are fixed now, before any run** (`CRITERIA` in `scripts/lib/real-speech.ts`, unit-tested): P1 zero confirmed wrong orders; P3/P3b false-hold rate <= 15% (overall and for `confirm_order`); P4 evidence accuracy >= 95% clean-room; P5 every wait <= 4000 ms; P6 stalls <= 5% clean-room; P7 coverage (3+ speakers x 10+ recordings, each with an imperfect and an overlapping correction, 3+ noisy). Not editable after results exist without a new decision that keeps the old value beside it.
-**Gate:** Step 6 is not demo-ready until the pass has run at least once against real speech. It does not block Step 4's completion. **It has NOT been run.** Recruiting speakers is the only real cost (about 20 minutes of API time); the owner must name a date and 3+ speakers.
+**Gate:** Step 6 is not demo-ready until the pass has run at least once against real speech. It does not block Step 4's completion. **It has now run (2026-09-23) — see the update immediately below; the gate is still not satisfied, because the result was FAIL, not because it never ran.**
+
+**Update (2026-09-23): the pass has run. OVERALL: FAIL.** 3 speakers (Tunde, Ayoola, Ola), 12 recordings each, 36 total — full results in `docs/real-speech-validation-results.md`.
+| id | result | detail |
+|---|---|---|
+| P1 (0 confirmed wrong orders) | **PASS** | 0/0 — the zero-tolerance criterion held |
+| P3 (false-hold rate <=15%) | **FAIL** | 15/61 = 24.6% |
+| P3b (same, `confirm_order` only) | **FAIL** | 1/4 = 25.0% |
+| P4 (evidence accuracy >=95% clean-room) | **FAIL** | 20/30 = 66.7% |
+| P5 (every wait <=4000 ms) | **FAIL** | max 4018 ms (18 ms over), 1 `PENDING_EVIDENCE` hold |
+| P6 (stalls <=5% clean-room) | PASS | 0/30 |
+| P7 (coverage) | PASS | 3 speakers, 12 each, all required correction types + 6 noisy |
+
+**What this means, without softening it: Step 6 is NOT demo-ready by this decision's own gate.** The one criterion that would have meant real harm reaching an order (P1) held: nothing wrong was ever confirmed. But three of the four remaining criteria failed, and per this decision's own rule ("not editable after results exist"), the thresholds stand and the result is FAIL, not "mostly passing." Breaking down why, from the 36 result files directly:
+- **P3/P3b (over-holding):** of the calls the gate held, 15 were **false positives** — the spoken content actually matched what the speaker intended, but disfluent real speech (false starts, "um", trailing off) made the extractor read it as unclear or mismatched. 13 more holds were **true positives** (the agent itself got the content wrong; correctly caught — this is the system working as designed). The false-positive rate is the real, new finding: natural human disfluency triggers more caution than the 15% synthetic-derived budget allows.
+- **P4 (evidence accuracy):** on recordings with no correction and no background noise, the independent stream's own transcript, run through the extractor, matched the speaker's exact intent only 66.7% of the time, against a 95% target set from synthetic/captured phrasing. Two concrete misses: one recording's independent transcript was garbled non-English text (a real ASR miss on that speaker's voice, not a Tally bug); one was transcribed as Dutch. This is exactly the kind of real-world STT limitation this pass exists to surface, not to hide.
+- **P5 (wait bound):** one call waited 4018 ms against a 4000 ms ceiling — 18 ms over, on one recording, out of 36. Marginal, but the criterion is a hard bound and it was fixed before any run; it is reported as a fail, not rounded away.
+- **One separate, smaller finding:** one recording (`Ayoola-02`) produced **zero tool calls** despite the independent stream transcribing the speech correctly and completely — the managed agent itself never acted on it. A played-back WAV cannot answer a clarifying question the way a live caller would, so this may be a turn-taking artifact of feeding a recording into a live conversational agent rather than a gate/extractor defect; it is reported as observed, not explained away.
+**Accuracy claims from here forward are narrowed to what this pass measured**, per this decision's own rule: real speech has a materially higher false-hold rate and materially lower clean-room evidence-extraction accuracy than the synthetic/captured phrasing every earlier measurement in this project used. The fixed-criteria table above is not revised; a second pass, if run, is a new dated result recorded beside this one, not a replacement for it.
 
 
 ### D-27 · Step 6 targeted repair (2026-09-20): design, and what is and is not validated

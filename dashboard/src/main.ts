@@ -25,7 +25,7 @@ export interface UiState {
   sessionsOpen: boolean;
 }
 
-export const FALLBACK_NOTICE = 'Validation status: the regression suite is synthetic and captured phrasing only; the real-speech pass and live-agent validation are pending. A pass means no KNOWN failure regressed.';
+export const FALLBACK_NOTICE = 'Validation status: the regression suite is synthetic and captured phrasing only. The real-speech pass has run and did NOT meet its fixed criteria (see docs/real-speech-validation-results.md). A pass here means no KNOWN failure regressed, not that real-speech accuracy is proven.';
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export function mountApp(root: HTMLElement, deps: Deps): { destroy(): void; state(): UiState; flush(): Promise<void>; refresh(): Promise<void>; attach(id: string): Promise<void> } {
