@@ -162,7 +162,7 @@ describe('startup', () => {
     const srv = await startServer(env);
     const v1 = srv.store.activeConfig()!;
     expect(v1).toMatchObject({ version: 'v1', prompt_text: buildSystemPrompt(), integrity_ok: true });
-    expect(v1.gating_params).toMatchObject({ evidenceWaitMaxMs: 4500, minWordConfidence: 0.6, regressionThreshold: 4 });
+    expect(v1.gating_params).toMatchObject({ evidenceWaitMaxMs: 4000, minWordConfidence: 0.6, regressionThreshold: 4 });
     await srv.close();
     const srv2 = await startServer(env);                                                   // a restart does not re-create or re-activate anything
     expect(srv2.store.listConfigs()).toHaveLength(1);

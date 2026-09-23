@@ -5,7 +5,7 @@ import type { GatingParams, Store } from '@tally/reliability';
 
 export function envGating(env: NodeJS.ProcessEnv): Required<Pick<GatingParams, 'evidenceWaitMaxMs' | 'minWordConfidence' | 'sttStallMs' | 'regressionThreshold'>> {
   const num = (k: string, d: number) => (env[k] ? Number(env[k]) : d);
-  return { evidenceWaitMaxMs: num('EVIDENCE_WAIT_MAX_MS', 4500), minWordConfidence: num('MIN_WORD_CONFIDENCE', 0.6), sttStallMs: num('STT_STALL_MS', 2500), regressionThreshold: num('REGRESSION_THRESHOLD', 3) };
+  return { evidenceWaitMaxMs: num('EVIDENCE_WAIT_MAX_MS', 4000), minWordConfidence: num('MIN_WORD_CONFIDENCE', 0.6), sttStallMs: num('STT_STALL_MS', 2500), regressionThreshold: num('REGRESSION_THRESHOLD', 3) };
 }
 
 /** Creates and activates baseline `v1` if the registry is empty. Idempotent. */

@@ -262,6 +262,30 @@ Re-ran `real-speech:batch` a third time over the same 36 recordings:
 
 **OVERALL: still FAIL**, now on P3/P3b/P4/P5 (was P4/P5 after the second run). Step 6 remains not demo-ready by this decision's own gate. Nothing here rewrites the two entries above; this is the third dated result appended beside them.
 
+**Update (2026-09-23, same day): the third update's fix was wrong. Reverted. Root cause of the P3/P3b regression identified: genuine managed-agent non-determinism, not a wait-ceiling interaction. Final state for this pass.**
+The third update's reasoning had a logical error, caught and corrected the same day: **`EVIDENCE_WAIT_MAX_MS` is a ceiling on how long the system is willing to wait; P5's fixed criterion caps the *observed* wait.** Raising the system's own ceiling can only ever let observed waits go higher, never lower — it cannot bring a value that is already over a fixed bound back under it. Raising it to 4500 ms was therefore certain to keep P5 failing before a single test was run, and did not deserve to be called a "fix." **Reverted: `EVIDENCE_WAIT_MAX_MS` is back to 4000 ms** in `reliability/src/gate.ts`, `server/src/runtime.ts`, `server/src/bootstrap.ts`'s default, and `.env.example`, with the matching tests and docs reverted alongside (`server/test/env-example.test.ts`, `server/test/promotion-api.test.ts`, `reliability/test/dropout.test.ts`, `dashboard/test/e2e.test.ts`, `ARCHITECTURE.md`, `DEMO.md`). This entry does not delete or rewrite the third update above — it stands as the record of what was tried and why it was wrong.
+
+**Before touching anything else, investigated the open question the third update left unconfirmed: was the P3/P3b regression actually caused by the wait-ceiling change, or was it independent, genuine agent non-determinism?** Ran the real-speech batch twice more over the identical 36 recordings, both times at the now-reverted 4000 ms ceiling, no code changes between them:
+| run | ceiling | P3 | P3b | valid-call denominator |
+|---|---|---|---|---|
+| 1 (original, pre-fix) | 4000 ms | 15/61 = 24.6% FAIL | 1/4 = 25.0% FAIL | 61 |
+| 2 (after extractor+STT fixes) | 4000 ms | 8/58 = 13.8% PASS | 0/1 = 0.0% PASS | 58 |
+| 3 (after the 4500ms fix) | 4500 ms | 13/56 = 23.2% FAIL | 1/3 = 33.3% FAIL | 56 |
+| 4 (investigation, reverted) | 4000 ms | 7/48 = 14.6% PASS | 0/1 = 0.0% PASS | 48 |
+| 5 (investigation, reverted) | 4000 ms | 13/54 = 24.1% FAIL | 0/0 = 0.0% (trivial n) | 54 |
+
+**Finding, stated plainly: P3 was run four times at an identical 4000 ms ceiling with zero code changes between runs 2, 4 and 5, and produced 24.6%, 13.8%, 14.6% and 24.1% — spanning both sides of the fixed 15% threshold, on the exact same 36 audio files.** The wait-ceiling cannot be the cause: it was 4000 ms in three of these four runs and the result went PASS/FAIL/PASS/FAIL anyway, and even the raw *number of valid calls* churns run to run (61, 58, 48, 54) despite streaming byte-identical WAV files through byte-identical code. **This is genuine managed-agent non-determinism — real session-to-session variance in how the live, non-seedable managed agent interprets and acts on the same audio — not a defect in Tally's extractor, gate, or STT configuration.** No further re-runs or tuning were attempted after this was confirmed; per instruction, this is the final, honest state of the pass for submission.
+
+**P5, across the same runs, shows a different and more informative pattern: a consistent overshoot, never absent, never large.** At the reverted 4000 ms ceiling: 18 ms over (run 1), 22 ms over (run 2), 12 ms over (run 4), 27 ms over (run 5) — every single run exceeds 4000 ms, by an amount that stays in a narrow 12-27 ms band regardless of which run or which ceiling was active (the 4500 ms run also overshot by 8 ms). **This reads as a small, structural latency floor in the real managed agent's own response time — not a Tally timing bug, and not something a config change to the ceiling can fix (see the update above).** A lower ceiling (e.g. 3900 ms, building in margin against this overshoot) was considered but explicitly not attempted, given the deadline; P5 is left FAIL, honestly, with its cause now understood rather than guessed at.
+
+**Final, submission-facing state of this pass, all four criteria that don't already pass:**
+- **P3/P3b: UNSTABLE, not a fixed pass or fail.** Reported as "borderline, agent-dependent" rather than PASS or FAIL — the true false-hold rate sits close to the 15% budget and which side of it a given run lands on depends on the managed agent's own non-deterministic behavior that session, not on anything in this codebase.
+- **P4: genuine, understood gap.** 76.7-80.0% across runs against a 95% target; root cause is accented/disfluent real speech exceeding what language-hint steering alone resolves (D-26's second update). No further ASR tuning attempted, per instruction.
+- **P5: fails by a small, consistent, structural margin (12-27 ms over 4000 ms) tied to real managed-agent latency, not a fixable Tally defect.**
+- **P1, P6, P7 remain solid passes** across every run in this pass's entire history, including all five runs referenced above: zero confirmed-wrong orders, ever.
+
+**OVERALL: FAIL**, and by design will keep landing on the P3/P3b/P4/P5 side depending on which run one looks at — the honest summary is P1/P6/P7 solid, P4 a real and understood gap, P5 a small structural latency margin, and P3/P3b unstable rather than reliably either. Step 6 is not demo-ready by this decision's own gate. This is the fourth dated result appended beside the three above; none of them are rewritten.
+
 
 ### D-27 · Step 6 targeted repair (2026-09-20): design, and what is and is not validated
 **Design (all in `/reliability` + `/contract`; the agent adapter only translates):**

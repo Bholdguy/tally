@@ -81,7 +81,7 @@ export class SessionRuntime {
     // the gate shares the runtime clock so waits, stalls and evidence timestamps are all on one timeline
     this.gate = new Gate({
       store: o.store, evidenceFor: () => this.tracker, clock: { now: this.clock, sleep: systemClock.sleep },
-      evidenceWaitMaxMs: o.evidenceWaitMaxMs ?? 4500, minWordConfidence: o.minWordConfidence ?? 0.6,
+      evidenceWaitMaxMs: o.evidenceWaitMaxMs ?? 4000, minWordConfidence: o.minWordConfidence ?? 0.6,
       onRepair: (r) => this.emit(this.base({ kind: 'repair', ...r }) as TallyEvent),
       maxRepairAttempts: o.maxRepairAttempts,
       ...o.gateOverrides,

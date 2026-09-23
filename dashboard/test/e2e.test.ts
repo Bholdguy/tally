@@ -48,7 +48,7 @@ describe('operator dashboard, end to end over HTTP + SSE', () => {
     await waitFor(() => { const c = h.root.querySelector('#wait-chip'); if (c) sawWaiting ||= c.textContent ?? ''; if (h.root.querySelectorAll('svg.timeline .barge').length) sawBarge = true; return /ALLOWED · REPAIRED/.test(h.log().join('\n')); }, 60000);
     await h.ui.flush(); await tick(300); await h.ui.flush();
     expect(sawWaiting).toMatch(/WAITING ON INDEPENDENT EVIDENCE/);
-    expect(sawWaiting).toMatch(/\/ 4\.5 s/);
+    expect(sawWaiting).toMatch(/\/ 4\.0 s/);
     expect(sawBarge).toBe(true);
 
     const log = h.log();
