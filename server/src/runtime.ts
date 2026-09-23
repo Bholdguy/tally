@@ -226,6 +226,10 @@ export class SessionRuntime {
 
   async end(): Promise<EndSummary> {
     if (this.summary) return this.summary;
+    // NOTE (2026-09-23, TASKS.md "Known flaky tests"): this drains the FULL real-time-paced sendPcm chain, even audio queued
+    // before a client disconnect (the ws layer closing the socket does not cancel already-chained work). Normally bounded by
+    // how much real audio was actually sent; a test that floods far-faster-than-real-time audio before the queue bound
+    // closes it can still leave several real seconds of chain to drain here during cleanup.
     await this.chain.catch(() => undefined);
     try { await this.agent.end(); } catch { /* socket may already be closed */ }
     try { await this.stt?.terminate(); } catch { /* best effort */ }

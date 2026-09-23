@@ -161,6 +161,18 @@ describe('WebSocket mic bridge', () => {
     w.close();
   });
 
+  // KNOWN FLAKY (investigated 2026-09-23, TASKS.md "Known flaky tests"): this test's own assertions are reliable (18/18 in
+  // isolation), but its afterEach cleanup occasionally exceeds vitest's 10 s hookTimeout when the full suite runs many test
+  // files in parallel. Root cause understood, not a guess: SessionRuntime.sendPcm() (server/src/runtime.ts) serialises and
+  // PACES every chunk to real time on one shared promise chain; ws.close(1013) here stops new frames but does NOT cancel
+  // frames already queued onto that chain, and SessionRuntime.end() awaits the chain to fully drain. Sending 400x20ms burst
+  // frames queues up to ~5 s of real-time-paced chain (matching the 5 s queue bound) that must finish draining during this
+  // test's OWN cleanup, which already measures ~7.5 s in isolation -- close enough to the 10 s hookTimeout that added
+  // scheduler contention from running 58 other files concurrently can occasionally tip it over. This is real and
+  // reproducible under load, not pure CI noise, but it is a test-only artifact: a live microphone never floods 8 s of audio
+  // in under a second, so this does not affect the live mic-bridge path. Not fixed here (would mean either shortening the
+  // burst below ~250 frames or making SessionRuntime.end() abandon rather than drain the chain, both out of scope for this
+  // pass); flagged instead so a future failure here is not silently ignored.
   it('an oversize frame is refused (1009); a client sending far faster than real time is disconnected (1013), not buffered forever', async () => {
     const s = await ready();
     const big = await openWs(s.port); await auth(big, s.session_id);
