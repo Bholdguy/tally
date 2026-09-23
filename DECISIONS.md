@@ -222,6 +222,24 @@ The pass is no longer deferred. Protocol, speaker cards, consent text, harness a
 - **One separate, smaller finding:** one recording (`Ayoola-02`) produced **zero tool calls** despite the independent stream transcribing the speech correctly and completely — the managed agent itself never acted on it. A played-back WAV cannot answer a clarifying question the way a live caller would, so this may be a turn-taking artifact of feeding a recording into a live conversational agent rather than a gate/extractor defect; it is reported as observed, not explained away.
 **Accuracy claims from here forward are narrowed to what this pass measured**, per this decision's own rule: real speech has a materially higher false-hold rate and materially lower clean-room evidence-extraction accuracy than the synthetic/captured phrasing every earlier measurement in this project used. The fixed-criteria table above is not revised; a second pass, if run, is a new dated result recorded beside this one, not a replacement for it.
 
+**Update (2026-09-23, same day): two root-cause fixes, then a second pass over the SAME 36 recordings. OVERALL: still FAIL, but P3/P3b now PASS.**
+Investigation (diagnosis only, no threshold touched) found two real, fixable causes, not generic "confidence tuning":
+1. `stt/src/stream.ts` sent no `language_codes` to AssemblyAI's streaming STT. With `universal-3-5-pro` and that param unset, per AssemblyAI's own docs, "no steering is applied and the model code-switches natively across all of its supported languages" — confirmed as the structural cause of the two non-English transcripts from Miss P4. Fixed: `language_codes: ["en"]` by default (overridable, `[]` to disable).
+2. Of the 15 P3 false holds, 8 were `QTY_MISMATCH` at near-zero wait time (evidence was available immediately; the extractor's parsing was simply wrong). Reconstructing the exact evidence state at each flagged call (offline, deterministic, against the real transcripts) found two distinct extractor bugs in `reliability/src/extractor.ts`, both now fixed with regression tests (`reliability/test/extractor.test.ts` #53-54) reproducing the exact real transcripts: (a) a quantity meant for one item leaked onto a conjoined item with no number of its own ("three burgers and fries" wrongly gave fries qty 3 too); (b) the orphan-number fallback (a correction number not attached to any item, e.g. "make it three") could be stolen by a DIFFERENT item mentioned later in the same utterance ("make it three and a large Coke" wrongly moved coke's quantity to 3 instead of correcting burger). All 56 pre-existing extractor tests still pass unchanged.
+
+Re-ran `real-speech:batch` over the identical 36 recordings (fresh sessions; the transcripts and audio are unchanged, only the code that judges them changed):
+| id | before | after | detail (after) |
+|---|---|---|---|
+| P1 | PASS | PASS | 0/0 |
+| P3 | FAIL 24.6% | **PASS** | 8/58 = 13.8% |
+| P3b | FAIL 25.0% | **PASS** | 0/1 = 0.0% |
+| P4 | FAIL 66.7% | FAIL (improved) | 24/30 = 80.0% |
+| P5 | FAIL (18 ms over) | FAIL | max 4022 ms, 2 `PENDING_EVIDENCE` holds |
+| P6 | PASS 0/30 | PASS | 1/30 |
+| P7 | PASS | PASS | unchanged |
+
+**Reported exactly as measured, no softening:** P3 and P3b now pass — the extractor fix eliminated the false-hold cluster it targeted. P4 improved by 13.3 points (real speech is still measurably harder than the 95% target set from synthetic phrasing; language steering alone does not close the whole gap — real accented and disfluent speech has ASR error beyond what a language hint fixes). **P5 is essentially unchanged** (4022 ms vs 4018 ms, 2 holds vs 1) — expected, since neither fix touches evidence-wait timing at all; the difference is ordinary run-to-run variance from the non-seedable managed agent, not a regression from these changes. P6's one new stall (still within the 5% budget) is the same kind of variance. **OVERALL remains FAIL. Step 6 is still not demo-ready.** The harness-timeout finding (`Ayoola-02`, zero tool calls) was left untouched as instructed — this re-run, it produced two normal calls and a correct order, consistent with the earlier diagnosis that it was a one-off agent-latency race, not a defect.
+
 
 ### D-27 · Step 6 targeted repair (2026-09-20): design, and what is and is not validated
 **Design (all in `/reliability` + `/contract`; the agent adapter only translates):**

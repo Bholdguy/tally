@@ -17,6 +17,11 @@ export interface SttOptions {
   url?: string;                    // default wss://streaming.assemblyai.com/v3/ws
   speechModel?: string;            // default universal-3-5-pro
   sampleRate?: number;             // default 24000 (same PCM the Voice Agent session is fed)
+  /** language steering (Universal-3.5 Pro Streaming only), default ["en"]: without it the model code-switches natively across
+   * every language it supports, unbiased toward English (confirmed against AssemblyAI's own docs, 2026-09-23). Two real-speech
+   * recordings came back transcribed as other languages entirely with this unset (docs/real-speech-validation-results.md).
+   * Pass [] to explicitly run unsteered. */
+  languageCodes?: string[];
   frameMs?: number;                // outbound frame size, default 50 ms (API takes 50-1000 ms frames)
   clock?: () => number;            // share a clock with the primary session so timelines align
   onRaw?: (r: SttRaw) => void;
@@ -50,6 +55,8 @@ export class SttStream {
     const rate = this.o.sampleRate ?? 24000;
     const base = this.o.url ?? 'wss://streaming.assemblyai.com/v3/ws';
     const qs = new URLSearchParams({ speech_model: this.o.speechModel ?? 'universal-3-5-pro', sample_rate: String(rate), encoding: 'pcm_s16le' });
+    const languageCodes = this.o.languageCodes ?? ['en'];
+    if (languageCodes.length) qs.set('language_codes', JSON.stringify(languageCodes));
     const headers = { Authorization: this.o.apiKey.reveal() }; // documented: API key, no "Bearer" prefix
     const ready = new Promise<void>((res, rej) => { this.beginResolve = res; this.beginReject = rej; });
     this.ws = this.o.createSocket ? this.o.createSocket(`${base}?${qs}`, headers) : new WebSocket(`${base}?${qs}`, { headers });

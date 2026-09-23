@@ -37,9 +37,24 @@ describe('SttStream', () => {
     expect(req.url).toContain('speech_model=universal-3-5-pro');
     expect(req.url).toContain('sample_rate=24000');
     expect(req.url).toContain('encoding=pcm_s16le');
+    expect(decodeURIComponent(req.url!)).toContain('language_codes=["en"]'); // default steering: unsteered multilingual is what misread real speech as other languages
     expect(req.url).not.toContain('stt-key');
     expect(s.sessionId).toBe('stt-1');
     await s.terminate();
+  });
+
+  it('language steering can be overridden or explicitly disabled', async () => {
+    const url = await start();
+    const es = new SttStream({ apiKey: key, url, languageCodes: ['en', 'es'] });
+    await es.connect();
+    expect(decodeURIComponent(req.url!)).toContain('language_codes=["en","es"]');
+    await es.terminate();
+
+    const url2 = await start();
+    const un = new SttStream({ apiKey: key, url: url2, languageCodes: [] });
+    await un.connect();
+    expect(req.url).not.toContain('language_codes');
+    await un.terminate();
   });
 
   it('cuts the fed PCM into 50 ms binary frames (2400 bytes at 24 kHz PCM16) and keeps the remainder buffered', async () => {

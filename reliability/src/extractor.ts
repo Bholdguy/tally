@@ -214,13 +214,16 @@ export function foldUtterance(state: EvidenceState, u: EvidenceUtterance): Evide
 
   // ---- 1. item mentions (with quantity and removal scope) ----
   const mentions: Mention[] = [];
+  let prevMentionEnd = 0; // a quantity must not reach back across an EARLIER item's own mention to find its number: in
+  // "three burgers and fries" the "three" belongs to burgers; without this bound fries' own backward scan would step
+  // past "burgers" (not a boundary token) and find the same "three", wrongly reading fries as quantity 3 too
   for (let i = 0; i < toks.length; i++) {
     if (toks[i]!.boundary) continue;
     const m = matchAlias(toks, i);
     if (!m) continue;
-    // quantity: nearest number/article within 3 tokens before the alias, not crossing a clause boundary
+    // quantity: nearest number/article within 3 tokens before the alias, not crossing a clause boundary or an earlier item's mention
     let qty: number | null = null; let ambiguous = false; let qconf: number | null = null; let qIdx: number | null = null;
-    for (let k = i - 1; k >= Math.max(0, i - 3); k--) {
+    for (let k = i - 1; k >= Math.max(0, i - 3, prevMentionEnd); k--) {
       if (toks[k]!.boundary) break;
       const n = numberAt(toks, k);
       if (n) { qty = n.value; ambiguous = n.ambiguous; qconf = n.conf; qIdx = k; break; }
@@ -236,10 +239,18 @@ export function foldUtterance(state: EvidenceState, u: EvidenceUtterance): Evide
       if (w === 'scratch' && qty === null) removal = true;
     }
     mentions.push({ item_id: m.item_id, start: i, end: i + m.len, qIdx, qty, implicit: qty === null && !removal, ambiguous, conf: minConf(m.conf, qconf), removal });
+    prevMentionEnd = i + m.len;
     i += m.len - 1;
   }
 
   // ---- 2. apply mentions ----
+  // snapshot recency BEFORE this utterance's own mentions are applied: an orphan number's fallback target (step 3) must prefer
+  // an item established in an EARLIER utterance over one this utterance itself just mentioned later in the sentence — in
+  // "make it three and a large coke" (after an earlier "two burgers"), "three" is meant for burger, but coke's OWN mention
+  // ("a large coke") is processed moments later in step 2 below and would otherwise look more "recent" than burger by the
+  // time step 3 runs, stealing the correction
+  const priorMostRecent = [...state.items.values()].sort((a, b) => b.lastMention - a.lastMention)[0];
+
   const idxBase = ++state.seq;
   mentions.forEach((m, n) => {
     const e = ensure(state, m.item_id, idxBase * 1000 + n);
@@ -268,7 +279,10 @@ export function foldUtterance(state: EvidenceState, u: EvidenceUtterance): Evide
       const n = numberAt(toks, i);
       if (!n) continue;
       const before = [...mentions].filter((m) => m.end <= i).sort((a, b) => b.end - a.end)[0];
-      const target = before ? state.items.get(before.item_id)! : [...state.items.values()].sort((a, b) => b.lastMention - a.lastMention)[0]!;
+      // no in-utterance mention precedes the number: prefer whichever item was most recently mentioned BEFORE this utterance
+      // (priorMostRecent) over one this same utterance happens to mention later in the sentence; fall back to "most recent
+      // overall" only when there is no prior-utterance item at all (e.g. the very first utterance of the call)
+      const target = before ? state.items.get(before.item_id)! : priorMostRecent ? state.items.get(priorMostRecent.item_id)! : [...state.items.values()].sort((a, b) => b.lastMention - a.lastMention)[0]!;
       target.quantity = n.value; target.quantityImplicit = false; target.quantityAmbiguous = false; target.removed = false; target.minConf = n.conf;
     }
   }

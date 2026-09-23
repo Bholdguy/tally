@@ -106,3 +106,19 @@ describe('determinism', () => {
     expect(a).toBe(b);
   });
 });
+
+// Real transcripts from the 2026-09-23 real-speech pass (docs/real-speech-validation-results.md) that produced false
+// QTY_MISMATCH holds: the agent's tool call was correct, but the extractor read the wrong quantity from the independent
+// stream. Reproduced here exactly, fixed here, not by touching P1-P7 (D-26).
+describe('real-speech false holds, 2026-09-23: quantity does not leak across an item with no number of its own', () => {
+  it('53 "N X and Y" does not give Y the same quantity as X (Ayoola-06/Ola-06: "3, 3 burgers and fries")', () => {
+    const r = ev('Make it whole to no.', '3, 3 burgers and fries as soon as possible.');
+    expect(q(r, 'burger')).toBe(3);
+    expect(r.items.fries).toMatchObject({ q: 1, implicit: true }); // was q:3 before the fix (leaked from "3 burgers")
+  });
+  it('54 an orphan correction number targets the item from an EARLIER utterance, not one this same utterance mentions later (Ola-03: "make it three and a large Coke" after "two burgers")', () => {
+    const r = ev('Two burgers, no wait.', 'Make it three and a large Coke, thats all, as soon as possible.');
+    expect(q(r, 'burger')).toBe(3); // was 2 before the fix: "three" never reached burger
+    expect(q(r, 'coke')).toBe(1);   // was 3 before the fix: "three" wrongly landed on coke instead
+  });
+});
