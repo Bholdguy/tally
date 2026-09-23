@@ -154,7 +154,7 @@ Mutation checks (Step 7): threshold off-by-one -> 3 fail; no expected-state writ
 | `reliability/test/replay.test.ts` | known-fixed case PASSES at the spike-A timing (including events that arrived during the wait); 3 runs byte-identical (`diff_json`, verdict, stored rows); live state untouched; broken build FAILS with `SAFETY_REGRESSION`; missing-evidence holds keep holding; no-expected-state cases; desiredOutcome; error/guard cases (`seedReplayOrder` refuses non-replay sessions); wording (`describeReplay`, never "deterministic" for audio); `judgeAudioRun` canonical compare | 13 |
 | `server/test/replay-audio.test.ts` | audio tier through fresh sessions on mock servers: 3/3 passed with 1x pacing (>= 3 x clip), distinct replay-mode sessions, no cases spawned, live order untouched; 2/3 = FAIL; no-tool-call and start failure recorded as FAIL; refuses no-expected-state / unknown case / bad k; API: token, evidence sync, audio 202 + polling, 409 on concurrent run, labels | 7 |
 Mutation checks: late events dropped -> 2 fail; hold-check removed -> 2; evidence events dropped -> 3; audio judge always-pass -> 3; "majority passes" instead of "all pass" -> 2.
-**Not covered:** the audio tier against the REAL managed agent (needs a real resolved case; live-mic session).
+**Also covered, once, against the real managed agent (2026-09-23, not by this automated file):** `npx tsx scripts/replay-case.ts case_639c0db7-...bbc2f4a7 --tier=audio` streamed the stored PCM from the human mic session through three fresh live sessions; 3/3 passed (67.5 s / 67.0 s / 67.3 s). n=3, one case; see `docs/live-repair-validation.md` Part 2.
 
 
 ## 18. Step 9 test inventory (2026-09-20)
