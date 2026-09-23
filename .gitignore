@@ -8,3 +8,4 @@ dashboard/dist/
 fixtures/audio/*.pcm
 fixtures/audio/*.wav
 smoke-output.txt
+DEMO.md
